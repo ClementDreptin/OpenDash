@@ -1,0 +1,22 @@
+name: Check code formatting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-code-formatting:
+    name: Check code formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check code formatting with clang-format.
+        uses: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: 22
+          check-path: src

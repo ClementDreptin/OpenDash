@@ -1,0 +1,6 @@
+[submodule "deps/ImGui/imgui"]
+	path = deps/ImGui/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "deps/XexUtils"]
+	path = deps/XexUtils
+	url = https://github.com/ClementDreptin/XexUtils.git

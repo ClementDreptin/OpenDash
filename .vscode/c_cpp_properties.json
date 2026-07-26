@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Debug",
+            "includePath": [
+                "${workspaceFolder}/deps/XexUtils/include",
+                "${workspaceFolder}/deps/ImGui",
+                "${workspaceFolder}/deps/ImGui/imgui",
+                "${env:XEDK}/include/xbox"
+            ],
+            "defines": ["_DEBUG", "_XBOX", "_MBCS"],
+            "intelliSenseMode": "windows-msvc-x86"
+        },
+        {
+            "name": "Release",
+            "includePath": [
+                "${workspaceFolder}/deps/XexUtils/include",
+                "${workspaceFolder}/deps/ImGui",
+                "${workspaceFolder}/deps/ImGui/imgui",
+                "${env:XEDK}/include/xbox"
+            ],
+            "defines": ["NDEBUG", "_XBOX", "_MBCS"],
+            "intelliSenseMode": "windows-msvc-x86"
+        }
+    ],
+    "version": 4
+}
