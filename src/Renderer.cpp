@@ -1,0 +1,92 @@
+#include <xtl.h>
+
+#include <stdexcept>
+
+#include <imgui.h>
+#include <imgui_impl_xbox360.h>
+#include <imgui_impl_dx9.h>
+
+#include <XexUtils.h>
+
+#include "Renderer.h"
+
+Renderer::Renderer()
+{
+    CreateDevice();
+
+    InitImGui();
+}
+
+void Renderer::StartFrame()
+{
+    ImGui_ImplDX9_NewFrame();
+    ImGui_ImplXbox360_NewFrame();
+    ImGui::NewFrame();
+}
+
+void Renderer::EndFrame()
+{
+    // End the ImGui frame.
+    ImGui::EndFrame();
+
+    // Finish setting up the device render state.
+    m_pDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
+    m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+
+    // Render the clear color background.
+    D3DCOLOR clearColor = D3DCOLOR_XRGB(114, 140, 153);
+    m_pDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clearColor, 1.0f, 0);
+
+    // Render ImGui.
+    ImGui::Render();
+    ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+
+    // Tell the device to render.
+    m_pDevice->Present(nullptr, nullptr, nullptr, nullptr);
+}
+
+void Renderer::CreateDevice()
+{
+    // Create the D3D object.
+    m_pD3D = Direct3DCreate9(D3D_SDK_VERSION);
+
+    // D3DDevice creation options.
+    D3DPRESENT_PARAMETERS d3dpp = {};
+
+    // The definition is always 720p on Xbox 360, other definitions are created by the
+    // hardware scaler.
+    d3dpp.BackBufferWidth = 1280;
+    d3dpp.BackBufferHeight = 720;
+    d3dpp.BackBufferFormat = D3DFMT_A8R8G8B8;
+
+    // Depth stencil.
+    d3dpp.EnableAutoDepthStencil = TRUE;
+    d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
+
+    // VSync.
+    d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+
+    // Create the Direct3D device.
+    m_pD3D->CreateDevice(0, D3DDEVTYPE_HAL, nullptr, D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &m_pDevice);
+}
+
+void Renderer::InitImGui()
+{
+    // Setup the Dear ImGui context.
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    // Setup the Dear ImGui style.
+    ImGui::StyleColorsDark();
+
+    // Initialize the platform backend.
+    if (!ImGui_ImplXbox360_Init())
+        throw new std::runtime_error("[UI]: Error: Failed to initialized the Xbox 360 backend.");
+
+    // Initialize the renderer backend.
+    if (!ImGui_ImplDX9_Init(m_pDevice))
+        throw new std::runtime_error("[UI]: Error: Failed to initialized the DirectX 9 backend.");
+}

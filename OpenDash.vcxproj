@@ -69,6 +69,12 @@
     </Deploy>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\App.h" />
+    <ClInclude Include="src\Renderer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\App.cpp" />
+    <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
 </Project>
