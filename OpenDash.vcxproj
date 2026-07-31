@@ -66,6 +66,7 @@
     </Link>
     <Deploy>
       <DeploymentType>CopyToHardDrive</DeploymentType>
+      <DeploymentFiles>$(RemoteRoot)=$(ImagePath);$(RemoteRoot)\assets=$(OutDir)assets</DeploymentFiles>
     </Deploy>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -76,5 +77,15 @@
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\assets\fonts\Geist">
+      <Command>
+        if not exist "$(OutDir)assets\fonts\Geist" mkdir "$(OutDir)assets\fonts\Geist"
+        copy /Y "%(FullPath)\*.ttf" "$(OutDir)assets\fonts\Geist\"
+      </Command>
+      <Message>Copy the Geist font located at %(FullPath).</Message>
+      <Outputs>$(OutDir)assets\fonts\Geist</Outputs>
+    </CustomBuild>
   </ItemGroup>
 </Project>

@@ -73,11 +73,18 @@ void Renderer::CreateDevice()
 
 void Renderer::InitImGui()
 {
+    XASSERT(m_pDevice != nullptr);
+
     // Setup the Dear ImGui context.
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    // Setup the fonts.
+    m_pRegularFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist\\Geist-Regular.ttf", 20.0f);
+    m_pBoldFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist\\Geist-Bold.ttf", 20.0f);
+    io.FontDefault = m_pRegularFont;
 
     // Setup the Dear ImGui style.
     ImGui::StyleColorsDark();
