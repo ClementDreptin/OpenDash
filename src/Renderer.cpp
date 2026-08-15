@@ -1,14 +1,13 @@
 #include <xtl.h>
-
-#include <stdexcept>
-
 #include <imgui.h>
 #include <imgui_impl_xbox360.h>
 #include <imgui_impl_dx9.h>
-
 #include <XexUtils.h>
 
+#include "Exceptions.h"
 #include "Renderer.h"
+
+D3DDevice *Renderer::s_pDevice = nullptr;
 
 Renderer::Renderer()
 {
@@ -30,26 +29,32 @@ void Renderer::EndFrame()
     ImGui::EndFrame();
 
     // Finish setting up the device render state.
-    m_pDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
-    m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+    s_pDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
+    s_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    s_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
 
     // Render the clear color background.
     D3DCOLOR clearColor = D3DCOLOR_XRGB(114, 140, 153);
-    m_pDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clearColor, 1.0f, 0);
+    s_pDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clearColor, 1.0f, 0);
 
     // Render ImGui.
     ImGui::Render();
     ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 
     // Tell the device to render.
-    m_pDevice->Present(nullptr, nullptr, nullptr, nullptr);
+    s_pDevice->Present(nullptr, nullptr, nullptr, nullptr);
+}
+
+D3DDevice *Renderer::GetDevice()
+{
+    return s_pDevice;
 }
 
 void Renderer::CreateDevice()
 {
     // Create the D3D object.
-    m_pD3D = Direct3DCreate9(D3D_SDK_VERSION);
+    Direct3D *pD3D = Direct3DCreate9(D3D_SDK_VERSION);
+    (void)pD3D;
 
     // D3DDevice creation options.
     D3DPRESENT_PARAMETERS d3dpp = {};
@@ -68,12 +73,12 @@ void Renderer::CreateDevice()
     d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 
     // Create the Direct3D device.
-    m_pD3D->CreateDevice(0, D3DDEVTYPE_HAL, nullptr, D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &m_pDevice);
+    pD3D->CreateDevice(0, D3DDEVTYPE_HAL, nullptr, D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &s_pDevice);
 }
 
 void Renderer::InitImGui()
 {
-    XASSERT(m_pDevice != nullptr);
+    XASSERT(s_pDevice != nullptr);
 
     // Setup the Dear ImGui context.
     IMGUI_CHECKVERSION();
@@ -91,9 +96,9 @@ void Renderer::InitImGui()
 
     // Initialize the platform backend.
     if (!ImGui_ImplXbox360_Init())
-        throw new std::runtime_error("[UI]: Error: Failed to initialized the Xbox 360 backend.");
+        throw new Exception("[UI]: Error: Failed to initialized the Xbox 360 backend.");
 
     // Initialize the renderer backend.
-    if (!ImGui_ImplDX9_Init(m_pDevice))
-        throw new std::runtime_error("[UI]: Error: Failed to initialized the DirectX 9 backend.");
+    if (!ImGui_ImplDX9_Init(s_pDevice))
+        throw new Exception("[UI]: Error: Failed to initialized the DirectX 9 backend.");
 }

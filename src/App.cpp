@@ -1,5 +1,4 @@
 #include <imgui.h>
-
 #include <XexUtils.h>
 
 #include "App.h"

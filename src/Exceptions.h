@@ -1,0 +1,22 @@
+#pragma once
+
+#include <xtl.h>
+#include <stdexcept>
+
+namespace Exceptions
+{
+
+long __stdcall HandleSehException(EXCEPTION_POINTERS *pExceptionInfo);
+
+void HandleCppException(const std::exception &exception);
+
+}
+
+class Exception : public std::runtime_error
+{
+public:
+    explicit Exception(const char *format, ...);
+
+private:
+    static std::string FormatMessage(const char *format, ...);
+};
