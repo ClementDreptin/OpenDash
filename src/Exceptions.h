@@ -16,7 +16,4 @@ class Exception : public std::runtime_error
 {
 public:
     explicit Exception(const char *format, ...);
-
-private:
-    static std::string FormatMessage(const char *format, ...);
 };

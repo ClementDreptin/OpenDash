@@ -172,18 +172,6 @@ long __stdcall HandleSehException(EXCEPTION_POINTERS *pExceptionInfo)
 }
 
 Exception::Exception(const char *format, ...)
-    : std::runtime_error(FormatMessage(format))
+    : std::runtime_error(XexUtils::Formatter::Format(format))
 {
-}
-
-std::string Exception::FormatMessage(const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-
-    std::string message = XexUtils::Formatter::Format(format, args);
-
-    va_end(args);
-
-    return message;
 }

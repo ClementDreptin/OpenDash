@@ -96,9 +96,9 @@ void Renderer::InitImGui()
 
     // Initialize the platform backend.
     if (!ImGui_ImplXbox360_Init())
-        throw new Exception("[UI]: Error: Failed to initialized the Xbox 360 backend.");
+        throw Exception("[UI]: Error: Failed to initialized the Xbox 360 backend.");
 
     // Initialize the renderer backend.
     if (!ImGui_ImplDX9_Init(s_pDevice))
-        throw new Exception("[UI]: Error: Failed to initialized the DirectX 9 backend.");
+        throw Exception("[UI]: Error: Failed to initialized the DirectX 9 backend.");
 }
