@@ -68,6 +68,9 @@
       <DeploymentType>CopyToHardDrive</DeploymentType>
       <DeploymentFiles>$(RemoteRoot)=$(ImagePath);$(RemoteRoot)\assets=$(OutDir)assets</DeploymentFiles>
     </Deploy>
+    <ImageXex>
+      <ConfigurationFile>$(SolutionDir)xex.xml</ConfigurationFile>
+    </ImageXex>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\App.h" />

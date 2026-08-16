@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<xex>
+  <titleid id="0xB56870A9" />
+  <format>
+    <compressed />
+  </format>
+  <mediatypes>
+    <allpackages />
+  </mediatypes>
+  <gameregion>
+    <all />
+  </gameregion>
+  <version major="1" minor="0" build="0" qfe="0" />
+</xex>
