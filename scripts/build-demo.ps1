@@ -1,23 +1,10 @@
-$ErrorActionPreference = "Stop"
-
-# Make sure the XDK is installed.
-if (-not $env:XEDK) {
-    Write-Output "The XEDK environment variable is not defined. Make sure the Xbox 360 Software Development Kit is installed properly."
-}
-
-$RootDir = "$PSScriptRoot\.."
+# Import the common variables.
+. "$PSScriptRoot\common-build.ps1"
 
 # Execute blast.
-$XLastDir = "$RootDir\xlast"
-$XLastProjectFilePath = "$XLastDir\OpenDash.xlast"
-$XLastOutputDir = "$XLastDir\Online"
-$BlastPath = "$env:XEDK\bin\win32\blast.exe"
-& "$BlastPath" "$XLastProjectFilePath" /install:Local /nologo
+& "$BlastPath" "$XLastDir\demo.xlast" /install:Local /nologo
 
 # Create a temporary directory with the same structure as the output zip.
-$TitleId = "B56870A9"
-$PublisherOfferingId = "0FFFFFFF"
-$OutputFileName = "$TitleId$PublisherOfferingId"
 $BaseTmpDir = "$([System.IO.Path]::GetTempPath())\OpenDash"
 $FullTmpDir = "$BaseTmpDir\Content\0000000000000000\$TitleId\00080000"
 New-Item -ItemType Directory -Path $FullTmpDir -Force
