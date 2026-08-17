@@ -1,5 +1,4 @@
 #include <imgui.h>
-#include <XexUtils.h>
 
 #include "App.h"
 
@@ -9,15 +8,16 @@ void App::Run()
         Render();
 }
 
+#define CHAR_A "\xEF\x81\x81"
+
 void App::Render()
 {
     // Start the frame.
     m_Renderer.StartFrame();
 
-    // Render a simple button.
+    // Render a simple text with an icon.
     ImGui::Begin("Hello, world!");
-    if (ImGui::Button("Button"))
-        XexUtils::Log::Print("Button clicked");
+    ImGui::Text("Some text with the " CHAR_A " button");
     ImGui::End();
 
     // End the frame.
