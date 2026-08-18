@@ -93,7 +93,12 @@
       SkipUnchangedFiles="true"
     />
   </Target>
-  <Target Name="BuildNxeart" BeforeTargets="DeployToHardDrive">
+  <Target
+    Name="BuildNxeart"
+    BeforeTargets="DeployToHardDrive"
+    Inputs="$(SolutionDir)xlast/icon-64x64.png;$(SolutionDir)xlast/icon-420x320.jpg;$(SolutionDir)xlast/icon-1920x1080.jpg;$(SolutionDir)xlast/nxeart.xlast"
+    Outputs="$(OutDir)nxeart"
+  >
     <Exec Command="powershell $(SolutionDir)scripts\build-nxeart.ps1 $(Configuration)" />
   </Target>
 </Project>
