@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 # Make sure the XDK is installed.
 if (-not $env:XEDK) {
-    Write-Output "The XEDK environment variable is not defined. Make sure the Xbox 360 Software Development Kit is installed properly."
+    throw "The XEDK environment variable is not defined. Make sure the Xbox 360 Software Development Kit is installed properly."
 }
 
 # Declare the common variables.

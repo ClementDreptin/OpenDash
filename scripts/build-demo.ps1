@@ -1,6 +1,11 @@
 # Import the common variables.
 . "$PSScriptRoot\common-build.ps1"
 
+# Make sure the Release binary is present.
+if (![System.IO.File]::Exists("$RootDir\build\Release\bin\OpenDash.xex")) {
+    throw "Release binary not found. Make sure to build in Release mode first."
+}
+
 # Execute blast.
 & "$BlastPath" "$XLastDir\demo.xlast" /install:Local /nologo
 
