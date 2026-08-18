@@ -87,16 +87,16 @@ void Renderer::InitImGui()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
     // Register the regular font.
-    m_pRegularFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist\\Geist-Regular.ttf", 20.0f);
+    m_pRegularFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Regular.ttf", 20.0f);
 
     // Load the symbol font and merge it into the regular font.
     ImFontConfig symbolFontConfig;
     symbolFontConfig.MergeMode = true;
     ImWchar symbolFontRanges[] = { 0xF020, 0xF0FD, 0 };
-    io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Convsym\\Convsym.ttf", 20.0f, &symbolFontConfig, symbolFontRanges);
+    io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Convsym.ttf", 20.0f, &symbolFontConfig, symbolFontRanges);
 
     // Register the bold font.
-    m_pBoldFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist\\Geist-Bold.ttf", 20.0f);
+    m_pBoldFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Bold.ttf", 20.0f);
 
     // Make the regular font the default font.
     io.FontDefault = m_pRegularFont;

@@ -83,13 +83,13 @@
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
-  <Target Name="CopyAssets" BeforeTargets="DeployToHardDrive">
+  <Target Name="CopyFonts" BeforeTargets="DeployToHardDrive">
     <ItemGroup>
-      <Assets Include="src\assets\**\*" />
+      <Fonts Include="src\assets\fonts\**\*.ttf" />
     </ItemGroup>
     <Copy
-      SourceFiles="@(Assets)"
-      DestinationFolder="$(OutDir)assets\%(RecursiveDir)"
+      SourceFiles="@(Fonts)"
+      DestinationFiles="@(Fonts->'$(OutDir)assets\fonts\%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
     />
   </Target>
