@@ -8,17 +8,13 @@ void App::Run()
         Render();
 }
 
-#define CHAR_A "\xEF\x81\x81"
-
 void App::Render()
 {
     // Start the frame.
     m_Renderer.StartFrame();
 
-    // Render a simple text with an icon.
-    ImGui::Begin("Hello, world!");
-    ImGui::Text("Some text with the " CHAR_A " button");
-    ImGui::End();
+    // Render the games.
+    m_GamesExplorer.Render();
 
     // End the frame.
     m_Renderer.EndFrame();

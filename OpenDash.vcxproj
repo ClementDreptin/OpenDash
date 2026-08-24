@@ -75,11 +75,13 @@
   <ItemGroup>
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Exceptions.h" />
+    <ClInclude Include="src\GamesExplorer.h" />
     <ClInclude Include="src\Renderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\Exceptions.cpp" />
+    <ClCompile Include="src\GamesExplorer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>

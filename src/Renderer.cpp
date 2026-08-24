@@ -1,4 +1,5 @@
 #include <xtl.h>
+#include <cstdint>
 #include <imgui.h>
 #include <imgui_impl_xbox360.h>
 #include <imgui_impl_dx9.h>
@@ -8,6 +9,12 @@
 #include "Renderer.h"
 
 D3DDevice *Renderer::s_pDevice = nullptr;
+
+// The definition is always 720p on Xbox 360, other definitions are created by the
+// hardware scaler.
+const float Renderer::s_DisplayWidth = 1280.0f;
+const float Renderer::s_DisplayHeight = 720.0f;
+const float Renderer::s_SafeAreaMultipler = 0.05f;
 
 Renderer::Renderer()
 {
@@ -34,7 +41,7 @@ void Renderer::EndFrame()
     s_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
 
     // Render the clear color background.
-    D3DCOLOR clearColor = D3DCOLOR_XRGB(114, 140, 153);
+    D3DCOLOR clearColor = D3DCOLOR_XRGB(9, 9, 11);
     s_pDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clearColor, 1.0f, 0);
 
     // Render ImGui.
@@ -50,6 +57,16 @@ D3DDevice *Renderer::GetDevice()
     return s_pDevice;
 }
 
+Renderer::Area Renderer::GetSafeArea()
+{
+    Area area = {};
+    area.Origin = XexUtils::Math::vec2(s_DisplayWidth * s_SafeAreaMultipler, s_DisplayHeight * s_SafeAreaMultipler);
+    area.Width = s_DisplayWidth * (1.0f - s_SafeAreaMultipler * 2.0f);
+    area.Height = s_DisplayHeight * (1.0f - s_SafeAreaMultipler * 2.0f);
+
+    return area;
+}
+
 void Renderer::CreateDevice()
 {
     // Create the D3D object.
@@ -58,11 +75,8 @@ void Renderer::CreateDevice()
 
     // D3DDevice creation options.
     D3DPRESENT_PARAMETERS d3dpp = {};
-
-    // The definition is always 720p on Xbox 360, other definitions are created by the
-    // hardware scaler.
-    d3dpp.BackBufferWidth = 1280;
-    d3dpp.BackBufferHeight = 720;
+    d3dpp.BackBufferWidth = static_cast<uint32_t>(s_DisplayWidth);
+    d3dpp.BackBufferHeight = static_cast<uint32_t>(s_DisplayHeight);
     d3dpp.BackBufferFormat = D3DFMT_A8R8G8B8;
 
     // Depth stencil.
@@ -87,16 +101,16 @@ void Renderer::InitImGui()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
     // Register the regular font.
-    m_pRegularFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Regular.ttf", 20.0f);
+    m_pRegularFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Regular.ttf", 24.0f);
 
     // Load the symbol font and merge it into the regular font.
     ImFontConfig symbolFontConfig;
     symbolFontConfig.MergeMode = true;
     ImWchar symbolFontRanges[] = { 0xF020, 0xF0FD, 0 };
-    io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Convsym.ttf", 20.0f, &symbolFontConfig, symbolFontRanges);
+    io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Convsym.ttf", 24.0f, &symbolFontConfig, symbolFontRanges);
 
     // Register the bold font.
-    m_pBoldFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Bold.ttf", 20.0f);
+    m_pBoldFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Bold.ttf", 24.0f);
 
     // Make the regular font the default font.
     io.FontDefault = m_pRegularFont;
@@ -106,9 +120,89 @@ void Renderer::InitImGui()
 
     // Initialize the platform backend.
     if (!ImGui_ImplXbox360_Init())
-        throw Exception("[UI]: Error: Failed to initialized the Xbox 360 backend.");
+        throw Exception("[Renderer]: Failed to initialized the Xbox 360 backend.");
 
     // Initialize the renderer backend.
     if (!ImGui_ImplDX9_Init(s_pDevice))
-        throw Exception("[UI]: Error: Failed to initialized the DirectX 9 backend.");
+        throw Exception("[Renderer]: Failed to initialized the DirectX 9 backend.");
+}
+
+Texture::Texture(const XexUtils::Fs::Path &filePath)
+    : m_pTexture(nullptr)
+{
+    XASSERT(!filePath.IsEmpty());
+
+    // Create the texture from the file path.
+    HRESULT hr = D3DXCreateTextureFromFile(Renderer::GetDevice(), filePath.c_str(), &m_pTexture);
+    if (FAILED(hr))
+        throw Exception("[Renderer]: Couldn't create a texture from %s (%X).", filePath.c_str(), hr);
+}
+
+Texture::Texture(const XexUtils::Fs::Path &filePath, float width, float height)
+    : m_pTexture(nullptr)
+{
+    XASSERT(!filePath.IsEmpty());
+
+    // Create the texture from the file path and the dimensions.
+    HRESULT hr = D3DXCreateTextureFromFileEx(
+        Renderer::GetDevice(),
+        filePath.c_str(),
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height),
+        D3DX_DEFAULT,
+        0,
+        D3DFMT_UNKNOWN,
+        D3DPOOL_MANAGED,
+        D3DX_DEFAULT,
+        D3DX_DEFAULT,
+        0,
+        nullptr,
+        nullptr,
+        &m_pTexture
+    );
+    if (FAILED(hr))
+        throw Exception("[Renderer]: Couldn't create a texture from %s (%X).", filePath.c_str(), hr);
+}
+
+Texture::~Texture()
+{
+    Release();
+}
+
+Texture::Texture(const Texture &other)
+    : m_pTexture(other.m_pTexture)
+{
+    AddRef();
+}
+
+Texture &Texture::operator=(const Texture &other)
+{
+    if (this == &other)
+        return *this;
+
+    Release();
+    m_pTexture = other.m_pTexture;
+    AddRef();
+
+    return *this;
+}
+
+D3DTexture *Texture::GetHandle() const
+{
+    return m_pTexture;
+}
+
+void Texture::AddRef()
+{
+    if (m_pTexture != nullptr)
+        m_pTexture->AddRef();
+}
+
+void Texture::Release()
+{
+    if (m_pTexture != nullptr)
+    {
+        m_pTexture->Release();
+        m_pTexture = nullptr;
+    }
 }
