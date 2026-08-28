@@ -7,15 +7,16 @@
 #include <XexUtils.h>
 
 #include "Renderer.h"
+#include "Scene.h"
 
-class GamesExplorer
+class GamesExplorer : public Scene
 {
 public:
     GamesExplorer();
 
     ~GamesExplorer();
 
-    void Render();
+    void Render() override;
 
 private:
     struct Game
