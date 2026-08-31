@@ -100,12 +100,6 @@ DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
 {
     GamesExplorer *This = static_cast<GamesExplorer *>(pArgs);
 
-    // Mount the HDD.
-    // Collisions are expected when loading the explorer multiple times and it's fine.
-    HRESULT hr = XexUtils::Fs::MountHdd();
-    if (FAILED(hr) && hr != STATUS_OBJECT_NAME_COLLISION)
-        throw Exception("[GamesExplorer]: Couldn't mount the HDD (%X).", hr);
-
     // List the files in hdd:\Games.
     XexUtils::Fs::Path baseDir = "hdd:\\Games";
     auto files = XexUtils::Fs::ReadDirectory(baseDir);
@@ -125,11 +119,11 @@ DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
         const auto &file = (*files)[i];
 
         // We are looking for directories...
-        if (!(file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        if (!(file.Attributes & FILE_ATTRIBUTE_DIRECTORY))
             continue;
 
         // ...that contain a file named default.xex.
-        XexUtils::Fs::Path gameDirPath = baseDir / file.cFileName;
+        XexUtils::Fs::Path gameDirPath = baseDir / file.Name;
         XexUtils::Fs::Path defaultXexPath = gameDirPath / "default.xex";
         bool hasDefaultXex = GetFileAttributes(defaultXexPath.c_str()) == FILE_ATTRIBUTE_NORMAL;
         if (!hasDefaultXex)
@@ -138,7 +132,7 @@ DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
         // Create the Game object.
         Game game;
         game.DirPath = gameDirPath;
-        game.Name = file.cFileName;
+        game.Name = file.Name.String();
         This->EnrichGameFromNxeart(game);
 
         // Push the Game object into the vector.

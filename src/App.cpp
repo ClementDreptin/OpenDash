@@ -2,15 +2,31 @@
 #include <XexUtils.h>
 
 #include "App.h"
-#include "DummyScene.h"
+#include "Exceptions.h"
+#include "DeviceExplorer.h"
 #include "GamesExplorer.h"
 
 App::App()
     : m_CurrentSceneIndex(0)
 {
-    // Create the factories.
-    m_SceneFactories.emplace_back([]() -> Scene * { return new DummyScene(); });
-    m_SceneFactories.emplace_back([]() -> Scene * { return new GamesExplorer(); });
+    bool hasHdd = (XboxHardwareInfo->Flags & XBOX_HARDWARE_FLAG_HDD) != 0;
+    if (hasHdd)
+    {
+        // Mount the HDD.
+        // Collisions are expected when loading relaunching the app so it's fine.
+        HRESULT hr = XexUtils::Fs::MountHdd();
+        if (FAILED(hr) && hr != STATUS_OBJECT_NAME_COLLISION)
+            throw Exception("[App]: Couldn't mount the HDD (%X).", hr);
+
+        // Add the games explorer if hdd:\Games directory is present.
+        uint32_t gamesDirAttributes = GetFileAttributes("hdd:\\Games");
+        bool hasGamesDir = gamesDirAttributes != 0xFFFFFFFF && (gamesDirAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+        if (hasGamesDir)
+            m_SceneFactories.emplace_back([]() -> Scene * { return new GamesExplorer(); });
+
+        // Add a device explorer for the hard drive.
+        m_SceneFactories.emplace_back([]() -> Scene * { return new DeviceExplorer("hdd:\\"); });
+    }
 }
 
 void App::Run()
@@ -44,6 +60,9 @@ void App::Update()
     // on the first run.
     if (newIndex != m_CurrentSceneIndex || !m_CurrentScene)
         SwitchScene(newIndex);
+
+    // Update the current scene.
+    m_CurrentScene->Update(pGamepad);
 }
 
 void App::Render()

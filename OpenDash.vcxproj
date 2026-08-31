@@ -75,7 +75,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\App.h" />
-    <ClInclude Include="src\DummyScene.h" />
+    <ClInclude Include="src\DeviceExplorer.h" />
     <ClInclude Include="src\Exceptions.h" />
     <ClInclude Include="src\GamesExplorer.h" />
     <ClInclude Include="src\Renderer.h" />
@@ -83,7 +83,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\App.cpp" />
-    <ClCompile Include="src\DummyScene.cpp" />
+    <ClCompile Include="src\DeviceExplorer.cpp" />
     <ClCompile Include="src\Exceptions.cpp" />
     <ClCompile Include="src\GamesExplorer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
@@ -97,6 +97,16 @@
     <Copy
       SourceFiles="@(Fonts)"
       DestinationFiles="@(Fonts->'$(OutDir)assets\fonts\%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+    />
+  </Target>
+  <Target Name="CopyImages" BeforeTargets="DeployToHardDrive">
+    <ItemGroup>
+      <Images Include="src\assets\images\**\*.png" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(Images)"
+      DestinationFiles="@(Images->'$(OutDir)assets\images\%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
     />
   </Target>

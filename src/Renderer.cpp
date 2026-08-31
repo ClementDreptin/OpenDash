@@ -128,7 +128,7 @@ void Renderer::InitImGui()
 }
 
 Texture::Texture(const XexUtils::Fs::Path &filePath)
-    : m_pTexture(nullptr)
+    : m_pTexture(nullptr), m_Width(0.0f), m_Height(0.0f)
 {
     XASSERT(!filePath.IsEmpty());
 
@@ -136,10 +136,16 @@ Texture::Texture(const XexUtils::Fs::Path &filePath)
     HRESULT hr = D3DXCreateTextureFromFile(Renderer::GetDevice(), filePath.c_str(), &m_pTexture);
     if (FAILED(hr))
         throw Exception("[Renderer]: Couldn't create a texture from %s (%X).", filePath.c_str(), hr);
+
+    // Get the width and the height from the texture description.
+    D3DSURFACE_DESC description = {};
+    m_pTexture->GetLevelDesc(0, &description);
+    m_Width = static_cast<float>(description.Width);
+    m_Height = static_cast<float>(description.Height);
 }
 
 Texture::Texture(const XexUtils::Fs::Path &filePath, float width, float height)
-    : m_pTexture(nullptr)
+    : m_pTexture(nullptr), m_Width(width), m_Height(height)
 {
     XASSERT(!filePath.IsEmpty());
 
@@ -190,6 +196,16 @@ Texture &Texture::operator=(const Texture &other)
 D3DTexture *Texture::GetHandle() const
 {
     return m_pTexture;
+}
+
+float Texture::GetWidth() const
+{
+    return m_Width;
+}
+
+float Texture::GetHeight() const
+{
+    return m_Height;
 }
 
 void Texture::AddRef()

@@ -54,8 +54,14 @@ public:
 
     D3DTexture *GetHandle() const;
 
+    float GetWidth() const;
+
+    float GetHeight() const;
+
 private:
     D3DTexture *m_pTexture;
+    float m_Width;
+    float m_Height;
 
     void AddRef();
 
