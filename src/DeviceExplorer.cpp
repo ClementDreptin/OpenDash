@@ -5,6 +5,7 @@
 #include "DeviceExplorer.h"
 #include "Exceptions.h"
 #include "Renderer.h"
+#include "ScopeGuard.h"
 
 DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
     : m_SelectedFileIndex(0), m_DirectoryTexture("game:\\assets\\images\\directory.png"), m_FileTexture("game:\\assets\\images\\file.png"), m_XexTexture("game:\\assets\\images\\xex.png")
@@ -36,6 +37,12 @@ void DeviceExplorer::Render()
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
     ImGui::Begin(m_CurrentDir.c_str(), nullptr, windowFlags);
 
+    // Automatically end this window when this scope ends.
+    auto endWindowGuard = MakeScopeGuard([]() {
+        ImGui::End();
+        ImGui::PopStyleVar(4);
+    });
+
     // State to keep across renders.
     static bool changeDirectoryRequested = false;
 
@@ -43,58 +50,61 @@ void DeviceExplorer::Render()
     if (!m_ErrorMessage.empty())
     {
         ImGui::TextColored(ImVec4(1.0f, 0.39f, 0.40f, 1.0f), m_ErrorMessage.c_str());
+        return;
     }
-    // Render the list of files.
-    else if (!m_Files.empty())
+
+    // If the directory is empty, just render a placeholder text.
+    if (m_Files.empty())
     {
-        for (size_t i = 0; i < m_Files.size(); i++)
+        ImGui::Text("This directory is empty.");
+        return;
+    }
+
+    // Render the list of files.
+    for (size_t i = 0; i < m_Files.size(); i++)
+    {
+        // Create a selectable with an icon in it.
+
+        const auto &file = m_Files[i];
+
+        // Get the appropriate texture based on the file type.
+        bool isDir = (file.Attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+        bool isXex = file.Name.Extension() == ".xex";
+        const Texture &texture = isDir ? m_DirectoryTexture : isXex ? m_XexTexture
+                                                                    : m_FileTexture;
+
+        // Save the cursor position before creating the selectable.
+        ImVec2 cursorPos = ImGui::GetCursorPos();
+
+        // Create a selectable with an invisible text. It's invisible because it
+        // starts with "##".
+        std::string label = "##" + file.Name.String();
+        if (ImGui::Selectable(label.c_str(), m_SelectedFileIndex == i, 0, ImVec2(0.0f, texture.GetHeight())))
         {
-            // Create a selectable with an icon in it.
-
-            const auto &file = m_Files[i];
-
-            // Get the appropriate texture based on the file type.
-            bool isDir = (file.Attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-            bool isXex = file.Name.Extension() == ".xex";
-            const Texture &texture = isDir ? m_DirectoryTexture : isXex ? m_XexTexture
-                                                                        : m_FileTexture;
-
-            // Save the cursor position before creating the selectable.
-            ImVec2 cursorPos = ImGui::GetCursorPos();
-
-            // Create a selectable with an invisible text. It's invisible because it
-            // starts with "##".
-            std::string label = "##" + file.Name.String();
-            if (ImGui::Selectable(label.c_str(), m_SelectedFileIndex == i, 0, ImVec2(0.0f, texture.GetHeight())))
-            {
-                if (isDir)
-                    changeDirectoryRequested = true;
-                else if (isXex)
-                    XLaunchNewImage((m_CurrentDir / file.Name).c_str(), 0);
-            }
-
-            if (ImGui::IsItemFocused())
-                m_SelectedFileIndex = i;
-
-            // Move the cursor back to where it was before creating the selectable so that
-            // the next thing we push is at the beginning of the selectable.
-            ImGui::SetCursorPos(cursorPos);
-
-            // Render the appropriate icon.
-            ImGui::Image(texture.GetHandle(), ImVec2(texture.GetWidth(), texture.GetHeight()));
-            ImGui::SameLine();
-
-            // Vertically align the text with the middle of the icon.
-            ImGui::SetCursorPosY(cursorPos.y + (texture.GetHeight() - ImGui::GetTextLineHeight()) * 0.5f);
-            ImGui::Text(file.Name.c_str());
+            if (isDir)
+                changeDirectoryRequested = true;
+            else if (isXex)
+                XLaunchNewImage((m_CurrentDir / file.Name).c_str(), 0);
         }
 
-        // Setup proper wrapping in the list.
-        ImGui::NavMoveRequestTryWrapping(ImGui::GetCurrentWindow(), ImGuiNavMoveFlags_LoopY);
+        if (ImGui::IsItemFocused())
+            m_SelectedFileIndex = i;
+
+        // Move the cursor back to where it was before creating the selectable so that
+        // the next thing we push is at the beginning of the selectable.
+        ImGui::SetCursorPos(cursorPos);
+
+        // Render the appropriate icon.
+        ImGui::Image(texture.GetHandle(), ImVec2(texture.GetWidth(), texture.GetHeight()));
+        ImGui::SameLine();
+
+        // Vertically align the text with the middle of the icon.
+        ImGui::SetCursorPosY(cursorPos.y + (texture.GetHeight() - ImGui::GetTextLineHeight()) * 0.5f);
+        ImGui::Text(file.Name.c_str());
     }
-    // If the directory is empty, just render a placeholder text.
-    else
-        ImGui::Text("This directory is empty.");
+
+    // Setup proper wrapping in the list.
+    ImGui::NavMoveRequestTryWrapping(ImGui::GetCurrentWindow(), ImGuiNavMoveFlags_LoopY);
 
     // Change directory if requested.
     if (changeDirectoryRequested)
@@ -102,9 +112,6 @@ void DeviceExplorer::Render()
         changeDirectoryRequested = false;
         ChangeDirectory(m_CurrentDir / m_Files[m_SelectedFileIndex].Name);
     }
-
-    ImGui::End();
-    ImGui::PopStyleVar(4);
 }
 
 void DeviceExplorer::ChangeDirectory(const XexUtils::Fs::Path &newDir)

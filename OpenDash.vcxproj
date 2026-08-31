@@ -80,6 +80,7 @@
     <ClInclude Include="src\GamesExplorer.h" />
     <ClInclude Include="src\Renderer.h" />
     <ClInclude Include="src\Scene.h" />
+    <ClInclude Include="src\ScopeGuard.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\App.cpp" />

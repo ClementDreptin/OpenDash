@@ -6,6 +6,7 @@
 #include "Exceptions.h"
 #include "GamesExplorer.h"
 #include "Renderer.h"
+#include "ScopeGuard.h"
 
 // NOTE:
 // Right now, the background texture of each game is loaded ahead of time during the scan.
@@ -60,92 +61,44 @@ void GamesExplorer::Render()
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
     ImGui::Begin("Games Explorer", nullptr, windowFlags);
 
+    // Automatically end this window when this scope ends.
+    auto endWindowGuard = MakeScopeGuard([]() {
+        ImGui::End();
+        ImGui::PopStyleVar(3);
+    });
+
     // Retrieve the scanning state using the lock.
     bool scanning = false;
     EnterCriticalSection(&m_GamesLock);
     scanning = m_Scanning;
     LeaveCriticalSection(&m_GamesLock);
 
-    // Render the games if we're done scanning.
-    if (!scanning)
+    // Render a loading state while scanning.
+    if (scanning)
     {
-        // Create a two-column layout using a table.
-        if (ImGui::BeginTable("Games table", 2, ImGuiTableFlags_BordersInnerV))
-        {
-            ImGui::TableSetupColumn("Game list column", ImGuiTableColumnFlags_WidthStretch, 0.7f);
-            ImGui::TableSetupColumn("Game info column", ImGuiTableColumnFlags_WidthStretch, 0.3f);
-
-            ImGui::TableNextRow();
-
-            // The game list is the first column.
-            ImGui::TableSetColumnIndex(0);
-            RenderGameList();
-
-            // The current game info is the second column.
-            ImGui::TableSetColumnIndex(1);
-            RenderCurrentGameInfo();
-
-            ImGui::EndTable();
-        }
-    }
-    // Render a loading state otherwise.
-    else
         ImGui::Text("Loading games...");
-
-    ImGui::End();
-    ImGui::PopStyleVar(3);
-}
-
-DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
-{
-    GamesExplorer *This = static_cast<GamesExplorer *>(pArgs);
-
-    // List the files in hdd:\Games.
-    XexUtils::Fs::Path baseDir = "hdd:\\Games";
-    auto files = XexUtils::Fs::ReadDirectory(baseDir);
-    if (!files)
-    {
-        EnterCriticalSection(&This->m_GamesLock);
-        This->m_Scanning = false;
-        LeaveCriticalSection(&This->m_GamesLock);
-
-        return 0;
+        return;
     }
 
-    // Build the list of games.
-    std::vector<Game> games;
-    for (size_t i = 0; i < files->size(); i++)
+    // Render the games.
+    // We Create a two-column layout using a table.
+    if (ImGui::BeginTable("Games table", 2, ImGuiTableFlags_BordersInnerV))
     {
-        const auto &file = (*files)[i];
+        ImGui::TableSetupColumn("Game list column", ImGuiTableColumnFlags_WidthStretch, 0.7f);
+        ImGui::TableSetupColumn("Game info column", ImGuiTableColumnFlags_WidthStretch, 0.3f);
 
-        // We are looking for directories...
-        if (!(file.Attributes & FILE_ATTRIBUTE_DIRECTORY))
-            continue;
+        ImGui::TableNextRow();
 
-        // ...that contain a file named default.xex.
-        XexUtils::Fs::Path gameDirPath = baseDir / file.Name;
-        XexUtils::Fs::Path defaultXexPath = gameDirPath / "default.xex";
-        bool hasDefaultXex = GetFileAttributes(defaultXexPath.c_str()) == FILE_ATTRIBUTE_NORMAL;
-        if (!hasDefaultXex)
-            continue;
+        // The game list is the first column.
+        ImGui::TableSetColumnIndex(0);
+        RenderGameList();
 
-        // Create the Game object.
-        Game game;
-        game.DirPath = gameDirPath;
-        game.Name = file.Name.String();
-        This->EnrichGameFromNxeart(game);
+        // The current game info is the second column.
+        ImGui::TableSetColumnIndex(1);
+        RenderCurrentGameInfo();
 
-        // Push the Game object into the vector.
-        games.emplace_back(std::move(game));
+        ImGui::EndTable();
     }
-
-    // Populate the games and tell the render thread we're done scanning.
-    EnterCriticalSection(&This->m_GamesLock);
-    This->m_Games = std::move(games);
-    This->m_Scanning = false;
-    LeaveCriticalSection(&This->m_GamesLock);
-
-    return 0;
 }
 
 void GamesExplorer::RenderGameList()
@@ -158,75 +111,66 @@ void GamesExplorer::RenderGameList()
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 14.0f));
     ImGui::BeginChild("Game list", ImVec2(0.0f, listHeight), false, flags);
 
-    // State to keep across renders.
-    static bool showPopup = false;
+    // Automatically end this window when this scope ends.
+    auto endWindowGuard = MakeScopeGuard([]() {
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+    });
+
+    // If no games were found, just render a placeholder text.
+    if (m_Games.empty())
+    {
+        ImGui::Text("No games found.");
+        return;
+    }
 
     // Render the list of games.
-    if (!m_Games.empty())
+    for (size_t i = 0; i < m_Games.size(); i++)
     {
-        for (size_t i = 0; i < m_Games.size(); i++)
+        // Create a selectable with an icon in it.
+
+        const Game &game = m_Games[i];
+
+        // Save the cursor position before creating the selectable.
+        ImVec2 cursorPos = ImGui::GetCursorPos();
+
+        // Create a selectable with an invisible text. It's invisible because it
+        // starts with "##".
+        std::string label = "##" + game.Name;
+        if (ImGui::Selectable(label.c_str(), m_SelectedGameIndex == i, 0, ImVec2(0.0f, s_IconSize.y)))
+            ImGui::OpenPopup("Game options");
+
+        if (ImGui::IsItemFocused())
+            m_SelectedGameIndex = i;
+
+        // Move the cursor back to where it was before creating the selectable so that
+        // the next thing we push is at the beginning of the selectable.
+        ImGui::SetCursorPos(cursorPos);
+
+        // Add the icon if it's available.
+        if (game.IconTexture)
         {
-            // Create a selectable with an icon in it.
-
-            const Game &game = m_Games[i];
-
-            // Save the cursor position before creating the selectable.
-            ImVec2 cursorPos = ImGui::GetCursorPos();
-
-            // Create a selectable with an invisible text. It's invisible because it
-            // starts with "##".
-            std::string label = "##" + game.Name;
-            if (ImGui::Selectable(label.c_str(), m_SelectedGameIndex == i, 0, ImVec2(0.0f, s_IconSize.y)))
-                showPopup = true;
-
-            if (ImGui::IsItemFocused())
-                m_SelectedGameIndex = i;
-
-            // Move the cursor back to where it was before creating the selectable so that
-            // the next thing we push is at the beginning of the selectable.
-            ImGui::SetCursorPos(cursorPos);
-
-            // Add the icon if it's available.
-            if (game.IconTexture)
-            {
-                ImGui::Image(game.IconTexture->GetHandle(), s_IconSize);
-                ImGui::SameLine();
-            }
-
-            // Vertically align the text with the middle of the icon.
-            ImGui::SetCursorPosY(cursorPos.y + (s_IconSize.y - ImGui::GetTextLineHeight()) * 0.5f);
-            ImGui::Text(game.Name.c_str());
+            ImGui::Image(game.IconTexture->GetHandle(), s_IconSize);
+            ImGui::SameLine();
         }
 
-        // Setup proper wrapping in the list.
-        ImGui::NavMoveRequestTryWrapping(ImGui::GetCurrentWindow(), ImGuiNavMoveFlags_LoopY);
+        // Vertically align the text with the middle of the icon.
+        ImGui::SetCursorPosY(cursorPos.y + (s_IconSize.y - ImGui::GetTextLineHeight()) * 0.5f);
+        ImGui::Text(game.Name.c_str());
     }
-    // If no games were found, just render a placeholder text.
-    else
-        ImGui::Text("No games found.");
 
-    // Show the popup if requested.
-    if (showPopup)
-    {
-        ImGui::OpenPopup("Game options");
-        showPopup = false;
-    }
+    // Setup proper wrapping in the list.
+    ImGui::NavMoveRequestTryWrapping(ImGui::GetCurrentWindow(), ImGuiNavMoveFlags_LoopY);
 
     // The popup content.
     if (ImGui::BeginPopup("Game options"))
     {
         // Launch the game.
         if (ImGui::Selectable("Launch"))
-        {
-            LaunchGame(m_Games[m_SelectedGameIndex]);
-            ImGui::CloseCurrentPopup();
-        }
+            XLaunchNewImage((m_Games[m_SelectedGameIndex].DirPath / "default.xex").c_str(), 0);
 
         ImGui::EndPopup();
     }
-
-    ImGui::EndChild();
-    ImGui::PopStyleVar();
 }
 
 void GamesExplorer::RenderCurrentGameInfo()
@@ -237,34 +181,30 @@ void GamesExplorer::RenderCurrentGameInfo()
     float gameInfoHeight = ImGui::GetContentRegionAvail().y - ImGui::GetStyle().CellPadding.y * 2;
     ImGui::BeginChild("Game info", ImVec2(0.0f, gameInfoHeight), false, flags);
 
-    if (!m_Games.empty())
+    // Automatically end this window when this scope ends.
+    auto endWindowGuard = MakeScopeGuard([]() {
+        ImGui::EndChild();
+    });
+
+    if (m_Games.empty())
+        return;
+
+    const Game &game = m_Games[m_SelectedGameIndex];
+
+    // Display some general info about the game.
+    ImGui::Text("Directory:");
+    ImGui::Text("%s", game.DirPath.c_str());
+    ImGui::NewLine();
+    ImGui::Text("Title ID:");
+    ImGui::Text("%X", game.TitleId);
+
+    // Display the background if it's available.
+    if (game.BackgroundTexture)
     {
-        const Game &game = m_Games[m_SelectedGameIndex];
-
-        // Display some general info about the game.
-        ImGui::Text("Directory:");
-        ImGui::Text("%s", game.DirPath.c_str());
         ImGui::NewLine();
-        ImGui::Text("Title ID:");
-        ImGui::Text("%X", game.TitleId);
-
-        // Display the background if it's available.
-        if (game.BackgroundTexture)
-        {
-            ImGui::NewLine();
-            ImGui::Text("Background:");
-            ImGui::Image(game.BackgroundTexture->GetHandle(), s_BackgroundSize);
-        }
+        ImGui::Text("Background:");
+        ImGui::Image(game.BackgroundTexture->GetHandle(), s_BackgroundSize);
     }
-
-    ImGui::EndChild();
-}
-
-void GamesExplorer::LaunchGame(const Game &game)
-{
-    XexUtils::Fs::Path defaultXexPath = game.DirPath / "default.xex";
-
-    XLaunchNewImage(defaultXexPath.c_str(), 0);
 }
 
 void GamesExplorer::EnrichGameFromNxeart(Game &game)
@@ -320,6 +260,7 @@ void GamesExplorer::EnrichGameFromNxeart(Game &game)
     }
     catch (const Exception &exception)
     {
+        (void)exception;
         DebugPrint(exception.what());
         return;
     }
@@ -344,6 +285,7 @@ void GamesExplorer::EnrichGameFromNxeart(Game &game)
     }
     catch (const Exception &exception)
     {
+        (void)exception;
         DebugPrint(exception.what());
         return;
     }
@@ -352,4 +294,56 @@ void GamesExplorer::EnrichGameFromNxeart(Game &game)
 GamesExplorer::Game::Game()
     : TitleId(0)
 {
+}
+
+DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
+{
+    GamesExplorer *This = static_cast<GamesExplorer *>(pArgs);
+
+    // List the files in hdd:\Games.
+    XexUtils::Fs::Path baseDir = "hdd:\\Games";
+    auto files = XexUtils::Fs::ReadDirectory(baseDir);
+    if (!files)
+    {
+        EnterCriticalSection(&This->m_GamesLock);
+        This->m_Scanning = false;
+        LeaveCriticalSection(&This->m_GamesLock);
+
+        return 0;
+    }
+
+    // Build the list of games.
+    std::vector<Game> games;
+    for (size_t i = 0; i < files->size(); i++)
+    {
+        const auto &file = (*files)[i];
+
+        // We are looking for directories...
+        if (!(file.Attributes & FILE_ATTRIBUTE_DIRECTORY))
+            continue;
+
+        // ...that contain a file named default.xex.
+        XexUtils::Fs::Path gameDirPath = baseDir / file.Name;
+        XexUtils::Fs::Path defaultXexPath = gameDirPath / "default.xex";
+        bool hasDefaultXex = GetFileAttributes(defaultXexPath.c_str()) == FILE_ATTRIBUTE_NORMAL;
+        if (!hasDefaultXex)
+            continue;
+
+        // Create the Game object.
+        Game game;
+        game.DirPath = gameDirPath;
+        game.Name = file.Name.String();
+        This->EnrichGameFromNxeart(game);
+
+        // Push the Game object into the vector.
+        games.emplace_back(std::move(game));
+    }
+
+    // Populate the games and tell the render thread we're done scanning.
+    EnterCriticalSection(&This->m_GamesLock);
+    This->m_Games = std::move(games);
+    This->m_Scanning = false;
+    LeaveCriticalSection(&This->m_GamesLock);
+
+    return 0;
 }

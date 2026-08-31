@@ -36,17 +36,15 @@ private:
     CRITICAL_SECTION m_GamesLock;
     bool m_Scanning;
 
-    static const ImVec2 s_IconSize;
-    static const ImVec2 s_BackgroundSize;
-
-private:
-    static DWORD WINAPI ScanGamesThreadProc(void *pArgs);
-
     void RenderGameList();
 
     void RenderCurrentGameInfo();
 
-    void LaunchGame(const Game &game);
-
     void EnrichGameFromNxeart(Game &game);
+
+private:
+    static const ImVec2 s_IconSize;
+    static const ImVec2 s_BackgroundSize;
+
+    static DWORD WINAPI ScanGamesThreadProc(void *pArgs);
 };
