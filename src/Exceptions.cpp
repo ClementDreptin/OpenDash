@@ -1,7 +1,8 @@
 #include <xtl.h>
 #include <cstdint>
-#include <string>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 #include <XexUtils.h>
 

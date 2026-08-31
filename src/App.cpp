@@ -1,3 +1,6 @@
+#include <functional>
+#include <memory>
+#include <vector>
 #include <imgui.h>
 #include <XexUtils.h>
 
@@ -5,6 +8,8 @@
 #include "Exceptions.h"
 #include "DeviceExplorer.h"
 #include "GamesExplorer.h"
+#include "Renderer.h"
+#include "Scene.h"
 
 App::App()
     : m_CurrentSceneIndex(0)

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <xtl.h>
-#include <vector>
 #include <string>
+#include <vector>
 #include <imgui.h>
 #include <XexUtils.h>
 

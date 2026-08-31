@@ -1,4 +1,6 @@
 #include <xtl.h>
+#include <string>
+#include <vector>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <XexUtils.h>
@@ -6,6 +8,7 @@
 #include "Exceptions.h"
 #include "GamesExplorer.h"
 #include "Renderer.h"
+#include "Scene.h"
 #include "ScopeGuard.h"
 
 // NOTE:
