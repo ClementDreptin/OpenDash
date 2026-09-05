@@ -105,7 +105,7 @@ static std::string ExceptionInfoToString(EXCEPTION_POINTERS *pExceptionInfo)
             return text.str();
 
         uint32_t flag = pExceptionRecord->ExceptionInformation[0];
-        uint32_t address = pExceptionRecord->ExceptionInformation[1];
+        void *address = reinterpret_cast<void *>(pExceptionRecord->ExceptionInformation[1]);
 
         // The flag should either be 0 to indicate a read, or 1 to indicate a write.
         // If it's anything else, we have a problem.
