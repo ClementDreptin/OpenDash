@@ -4,8 +4,10 @@
 #include <memory>
 #include <vector>
 
+#include "DeviceWatcher.h"
 #include "Renderer.h"
 #include "Scene.h"
+#include "SelectableList.h"
 
 class App
 {
@@ -15,14 +17,26 @@ public:
     void Run();
 
 private:
+    struct SceneFactoryEntry
+    {
+        SceneFactoryEntry(const std::string &deviceName, const std::function<Scene *()> &factory)
+            : DeviceName(deviceName), Factory(factory)
+        {
+        }
+
+        std::string DeviceName;
+        std::function<Scene *()> Factory;
+    };
+
     Renderer m_Renderer;
-    std::vector<std::function<Scene *()>> m_SceneFactories;
+    DeviceWatcher m_DeviceWatcher;
+    SelectableList<SceneFactoryEntry> m_SceneFactories;
     std::unique_ptr<Scene> m_CurrentScene;
-    size_t m_CurrentSceneIndex;
+    SceneFactoryEntry *m_ActiveFactory;
 
     void Update();
 
     void Render();
 
-    void SwitchScene(size_t index);
+    void SwitchScene();
 };

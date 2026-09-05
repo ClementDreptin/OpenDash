@@ -1,36 +1,40 @@
 #include <functional>
 #include <memory>
 #include <vector>
-#include <imgui.h>
 #include <XexUtils.h>
 
 #include "App.h"
 #include "Exceptions.h"
 #include "DeviceExplorer.h"
+#include "DeviceWatcher.h"
 #include "GamesExplorer.h"
 #include "Renderer.h"
 #include "Scene.h"
+#include "SelectableList.h"
 
 App::App()
-    : m_CurrentSceneIndex(0)
+    : m_ActiveFactory(nullptr)
 {
     bool hasHdd = (XboxHardwareInfo->Flags & XBOX_HARDWARE_FLAG_HDD) != 0;
     if (hasHdd)
     {
-        // Mount the HDD.
-        // Collisions are expected when loading relaunching the app so it's fine.
-        HRESULT hr = XexUtils::Fs::MountHdd();
-        if (FAILED(hr) && hr != STATUS_OBJECT_NAME_COLLISION)
-            throw Exception("[App]: Couldn't mount the HDD (%X).", hr);
-
         // Add the games explorer if hdd:\Games directory is present.
         uint32_t gamesDirAttributes = GetFileAttributes("hdd:\\Games");
         bool hasGamesDir = gamesDirAttributes != 0xFFFFFFFF && (gamesDirAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         if (hasGamesDir)
-            m_SceneFactories.emplace_back([]() -> Scene * { return new GamesExplorer(); });
+            m_SceneFactories.PushBack(SceneFactoryEntry("", []() -> Scene * { return new GamesExplorer(); }));
+    }
 
-        // Add a device explorer for the hard drive.
-        m_SceneFactories.emplace_back([]() -> Scene * { return new DeviceExplorer("hdd:\\"); });
+    // Go through all the available devices and add a DeviceExplorer for each.
+    const auto &devices = m_DeviceWatcher.GetDevices();
+    for (size_t i = 0; i < devices.size(); i++)
+    {
+        const auto &device = devices[i];
+        if (device.Available)
+        {
+            std::string deviceName = device.Name;
+            m_SceneFactories.PushBack(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
+        }
     }
 }
 
@@ -46,25 +50,37 @@ void App::Run()
 
 void App::Update()
 {
+    // Check for updates from the device watcher.
+    auto deviceInfo = m_DeviceWatcher.Update();
+    if (deviceInfo)
+    {
+        // If a device was inserted, append a DeviceExplorer for it to the list of scenes.
+        if (deviceInfo->Available)
+        {
+            std::string deviceName = deviceInfo->Name;
+            m_SceneFactories.PushBack(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
+        }
+        // If a device removed, remove its corresponding DeviceExplorer.
+        else
+        {
+            m_SceneFactories.RemoveIf([&](const SceneFactoryEntry &entry) {
+                return entry.DeviceName == deviceInfo->Name;
+            });
+        }
+    }
+
     XexUtils::Input::Gamepad *pGamepad = XexUtils::Input::GetInput();
 
     // Switch scene with LB/RB.
-    size_t newIndex = m_CurrentSceneIndex;
     if (pGamepad->PressedButtons & XINPUT_GAMEPAD_LEFT_SHOULDER)
-    {
-        if (m_CurrentSceneIndex > 0)
-            newIndex--;
-    }
+        m_SceneFactories.SelectPrevious();
     else if (pGamepad->PressedButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER)
-    {
-        if (m_CurrentSceneIndex < m_SceneFactories.size() - 1)
-            newIndex++;
-    }
+        m_SceneFactories.SelectNext();
 
     // Switch scene if requested or if we don't have an active scene, which is the case
     // on the first run.
-    if (newIndex != m_CurrentSceneIndex || !m_CurrentScene)
-        SwitchScene(newIndex);
+    if (m_SceneFactories.GetSelected() != m_ActiveFactory || !m_CurrentScene)
+        SwitchScene();
 
     // Update the current scene.
     m_CurrentScene->Update(pGamepad);
@@ -83,11 +99,11 @@ void App::Render()
     m_Renderer.EndFrame();
 }
 
-void App::SwitchScene(size_t index)
+void App::SwitchScene()
 {
-    XASSERT(index < m_SceneFactories.size());
+    XASSERT(m_SceneFactories.GetSelected() != nullptr);
 
     // Destroy the previous scene and create the new one.
-    m_CurrentSceneIndex = index;
-    m_CurrentScene.reset(m_SceneFactories[index]());
+    m_ActiveFactory = m_SceneFactories.GetSelected();
+    m_CurrentScene.reset(m_ActiveFactory->Factory());
 }

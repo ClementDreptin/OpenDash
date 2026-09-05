@@ -76,15 +76,18 @@
   <ItemGroup>
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\DeviceExplorer.h" />
+    <ClInclude Include="src\DeviceWatcher.h" />
     <ClInclude Include="src\Exceptions.h" />
     <ClInclude Include="src\GamesExplorer.h" />
     <ClInclude Include="src\Renderer.h" />
     <ClInclude Include="src\Scene.h" />
     <ClInclude Include="src\ScopeGuard.h" />
+    <ClInclude Include="src\SelectableList.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\DeviceExplorer.cpp" />
+    <ClCompile Include="src\DeviceWatcher.cpp" />
     <ClCompile Include="src\Exceptions.cpp" />
     <ClCompile Include="src\GamesExplorer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
