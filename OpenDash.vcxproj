@@ -85,7 +85,6 @@
     <ClInclude Include="src\Input\InputWatcher.h" />
     <ClInclude Include="src\Renderer\Renderer.h" />
     <ClInclude Include="src\Utils\ScopeGuard.h" />
-    <ClInclude Include="src\Utils\SelectableList.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\App.cpp" />

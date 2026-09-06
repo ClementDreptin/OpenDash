@@ -14,7 +14,7 @@ D3DDevice *Renderer::s_pDevice = nullptr;
 // hardware scaler.
 const float Renderer::s_DisplayWidth = 1280.0f;
 const float Renderer::s_DisplayHeight = 720.0f;
-const float Renderer::s_SafeAreaMultipler = 0.05f;
+const float Renderer::s_SafeAreaMultipler = 0.02f;
 
 Renderer::Renderer()
 {

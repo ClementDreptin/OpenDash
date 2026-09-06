@@ -8,7 +8,6 @@
 #include "../Core/Exceptions.h"
 #include "../Core/Scene.h"
 #include "../Renderer/Renderer.h"
-#include "../Utils/ScopeGuard.h"
 #include "GamesExplorer.h"
 
 // NOTE:
@@ -18,7 +17,7 @@
 // the games.
 
 const ImVec2 GamesExplorer::s_IconSize(42.0f, 32.0f);
-const ImVec2 GamesExplorer::s_BackgroundSize(323.0f, 182.0f);
+const ImVec2 GamesExplorer::s_BackgroundSize(352.0f, 198.0f);
 
 GamesExplorer::GamesExplorer()
     : m_SelectedGameIndex(0), m_Scanning(true)
@@ -50,26 +49,6 @@ GamesExplorer::~GamesExplorer()
 
 void GamesExplorer::Render()
 {
-    ImGuiWindowFlags windowFlags =
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove;
-
-    // Start a window that takes up the full safe area.
-    Renderer::Area safeArea = Renderer::GetSafeArea();
-    ImGui::SetNextWindowPos(ImVec2(safeArea.Origin.x, safeArea.Origin.y));
-    ImGui::SetNextWindowSize(ImVec2(safeArea.Width, safeArea.Height));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
-    ImGui::Begin("Games Explorer", nullptr, windowFlags);
-
-    // Automatically end this window when this scope ends.
-    auto endWindowGuard = MakeScopeGuard([]() {
-        ImGui::End();
-        ImGui::PopStyleVar(3);
-    });
-
     // Retrieve the scanning state using the lock.
     bool scanning = false;
     EnterCriticalSection(&m_GamesLock);
@@ -83,43 +62,40 @@ void GamesExplorer::Render()
         return;
     }
 
-    // Render the games.
-    // We Create a two-column layout using a table.
-    if (ImGui::BeginTable("Games table", 2, ImGuiTableFlags_BordersInnerV))
-    {
-        ImGui::TableSetupColumn("Game list column", ImGuiTableColumnFlags_WidthStretch, 0.7f);
-        ImGui::TableSetupColumn("Game info column", ImGuiTableColumnFlags_WidthStretch, 0.3f);
+    // Render the games in the first column.
+    ImVec2 listSize(ImGui::GetContentRegionAvail().x * 0.7f, ImGui::GetContentRegionAvail().y);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 12.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
+    ImGui::BeginChild("Game list", listSize, false, ImGuiWindowFlags_NavFlattened | ImGuiWindowFlags_AlwaysUseWindowPadding);
+    RenderGameList();
+    ImGui::EndChild();
+    ImGui::PopStyleVar(2);
 
-        ImGui::TableNextRow();
+    // Draw a vertical separator in the gap between the two columns, replicating
+    // ImGuiTableFlags_BordersInnerV from a table-based layout.
+    ImVec2 listRectMin = ImGui::GetItemRectMin();
+    ImVec2 listRectMax = ImGui::GetItemRectMax();
+    float separatorX = listRectMax.x + ImGui::GetStyle().ItemSpacing.x * 0.5f;
+    ImU32 separatorColor = ImGui::GetColorU32(ImGuiCol_Separator);
+    ImGui::GetWindowDrawList()->AddLine(
+        ImVec2(separatorX, listRectMin.y),
+        ImVec2(separatorX, listRectMax.y),
+        separatorColor
+    );
 
-        // The game list is the first column.
-        ImGui::TableSetColumnIndex(0);
-        RenderGameList();
+    // Create a horizontal layout.
+    ImGui::SameLine();
 
-        // The current game info is the second column.
-        ImGui::TableSetColumnIndex(1);
-        RenderCurrentGameInfo();
-
-        ImGui::EndTable();
-    }
+    // Render the current game info in the second column.
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
+    ImGui::BeginChild("Game info", ImVec2(), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
+    RenderCurrentGameInfo();
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
 }
 
 void GamesExplorer::RenderGameList()
 {
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_NavFlattened |
-        ImGuiWindowFlags_AlwaysUseWindowPadding;
-
-    float listHeight = ImGui::GetContentRegionAvail().y - ImGui::GetStyle().CellPadding.y * 2;
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(14.0f, 14.0f));
-    ImGui::BeginChild("Game list", ImVec2(0.0f, listHeight), false, flags);
-
-    // Automatically end this window when this scope ends.
-    auto endWindowGuard = MakeScopeGuard([]() {
-        ImGui::EndChild();
-        ImGui::PopStyleVar();
-    });
-
     // If no games were found, just render a placeholder text.
     if (m_Games.empty())
     {
@@ -178,17 +154,6 @@ void GamesExplorer::RenderGameList()
 
 void GamesExplorer::RenderCurrentGameInfo()
 {
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_AlwaysUseWindowPadding;
-
-    float gameInfoHeight = ImGui::GetContentRegionAvail().y - ImGui::GetStyle().CellPadding.y * 2;
-    ImGui::BeginChild("Game info", ImVec2(0.0f, gameInfoHeight), false, flags);
-
-    // Automatically end this window when this scope ends.
-    auto endWindowGuard = MakeScopeGuard([]() {
-        ImGui::EndChild();
-    });
-
     if (m_Games.empty())
         return;
 

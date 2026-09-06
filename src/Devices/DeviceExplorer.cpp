@@ -19,25 +19,15 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
 
 void DeviceExplorer::Render()
 {
-    ImGuiWindowFlags windowFlags =
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove;
-
-    // Start a window that takes up the full safe area.
-    Renderer::Area safeArea = Renderer::GetSafeArea();
-    ImGui::SetNextWindowPos(ImVec2(safeArea.Origin.x, safeArea.Origin.y));
-    ImGui::SetNextWindowSize(ImVec2(safeArea.Width, safeArea.Height));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(15.0f, 15.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
-    ImGui::Begin(m_CurrentDir.c_str(), nullptr, windowFlags);
+    // Setup a child window with extra padding for the alignment.
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 12.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
+    ImGui::BeginChild("File list", ImVec2(), false, ImGuiWindowFlags_NavFlattened | ImGuiWindowFlags_AlwaysUseWindowPadding);
 
     // Automatically end this window when this scope ends.
     auto endWindowGuard = MakeScopeGuard([]() {
-        ImGui::End();
-        ImGui::PopStyleVar(4);
+        ImGui::EndChild();
+        ImGui::PopStyleVar(2);
     });
 
     // State to keep across renders.

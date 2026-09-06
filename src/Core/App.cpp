@@ -1,5 +1,7 @@
 #include <XexUtils.h>
+#include <algorithm>
 #include <functional>
+#include <imgui.h>
 #include <memory>
 #include <vector>
 
@@ -9,27 +11,25 @@
 #include "../Devices/GamesExplorer.h"
 #include "../Input/InputWatcher.h"
 #include "../Renderer/Renderer.h"
-#include "../Utils/SelectableList.h"
 #include "App.h"
 #include "Event.h"
 #include "Exceptions.h"
 
 App::App()
-    : m_ActiveFactory(nullptr)
 {
     // Allow the event emitters to propagate their events to the rest of the app.
     auto propagateEvent = [this](Event &event) { PropagateEvent(event); };
     m_DeviceWatcher.SetEventCallback(propagateEvent);
     m_InputWatcher.SetEventCallback(propagateEvent);
 
+    // Add the GamesExplorer if hdd:\Games directory is present.
     bool hasHdd = (XboxHardwareInfo->Flags & XBOX_HARDWARE_FLAG_HDD) != 0;
     if (hasHdd)
     {
-        // Add the GamesExplorer if hdd:\Games directory is present.
         uint32_t gamesDirAttributes = GetFileAttributes("hdd:\\Games");
         bool hasGamesDir = gamesDirAttributes != 0xFFFFFFFF && (gamesDirAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         if (hasGamesDir)
-            m_SceneFactories.PushBack(SceneFactoryEntry("", []() -> Scene * { return new GamesExplorer(); }));
+            m_SceneFactories.emplace_back(SceneFactoryEntry("Games Explorer", []() -> Scene * { return new GamesExplorer(); }));
     }
 
     // Go through all the available devices and add a DeviceExplorer for each.
@@ -40,7 +40,7 @@ App::App()
         if (device.Available)
         {
             std::string deviceName = device.Name;
-            m_SceneFactories.PushBack(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
+            m_SceneFactories.emplace_back(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
         }
     }
 }
@@ -57,11 +57,6 @@ void App::Run()
 
 void App::Update()
 {
-    // We don't have an active scene on the first run so we immediately switch to the
-    // default one.
-    if (!m_CurrentScene)
-        SwitchScene();
-
     // Update the event emitters.
     m_DeviceWatcher.Update();
     m_InputWatcher.Update();
@@ -72,9 +67,53 @@ void App::Render()
     // Start the frame.
     m_Renderer.StartFrame();
 
+    ImGuiWindowFlags windowFlags =
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoNavFocus |
+        ImGuiWindowFlags_NoMove;
+
+    // Create a window that takes the full safe area with no decoration except for a border.
+    Renderer::Area safeArea = Renderer::GetSafeArea();
+    ImGui::SetNextWindowPos(ImVec2(safeArea.Origin.x, safeArea.Origin.y));
+    ImGui::SetNextWindowSize(ImVec2(safeArea.Width, safeArea.Height));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 14.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
+    ImGui::Begin("Main", nullptr, windowFlags);
+
+    // Render a tab for each scene.
+    if (ImGui::BeginTabBar("SceneTabs"))
+    {
+        for (size_t i = 0; i < m_SceneFactories.size(); i++)
+        {
+            const SceneFactoryEntry &entry = m_SceneFactories[i];
+
+            if (ImGui::BeginTabItem(entry.SceneName.c_str()))
+            {
+                // Switch to the corresponding scene when entering a new tab.
+                bool isCurrentlyActive = entry.SceneName == m_ActiveSceneName;
+                if (!isCurrentlyActive)
+                    SwitchScene(entry);
+
+                ImGui::EndTabItem();
+            }
+        }
+
+        ImGui::EndTabBar();
+    }
+
+    // Add some padding between the tabs and the content below.
+    ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+
     // Render the current scene.
-    XASSERT(m_CurrentScene);
-    m_CurrentScene->Render();
+    if (m_CurrentScene)
+        m_CurrentScene->Render();
+
+    ImGui::End();
+    ImGui::PopStyleVar(4);
 
     // End the frame.
     m_Renderer.EndFrame();
@@ -82,42 +121,20 @@ void App::Render()
 
 void App::PropagateEvent(Event &event)
 {
-    XASSERT(m_CurrentScene);
-
     // Handle the event locally in this class first.
     OnEvent(event);
     if (event.Handled)
         return;
 
     // If the event wasn't handled by the App class, propagate it to the current scene.
-    m_CurrentScene->OnEvent(event);
+    if (m_CurrentScene)
+        m_CurrentScene->OnEvent(event);
 }
 
 void App::OnEvent(Event &event)
 {
     EventDispatcher dispatcher(event);
-    dispatcher.Dispatch<ButtonPressedEvent>([this](ButtonPressedEvent &e) { return OnButtonPressed(e); });
     dispatcher.Dispatch<DeviceChangedEvent>([this](DeviceChangedEvent &e) { return OnDeviceChanged(e); });
-}
-
-bool App::OnButtonPressed(ButtonPressedEvent &event)
-{
-    const XexUtils::Input::Gamepad &gamepad = event.GetGamepad();
-
-    // Switch scene with LB/RB.
-    if (gamepad.PressedButtons & XINPUT_GAMEPAD_LEFT_SHOULDER)
-        m_SceneFactories.SelectPrevious();
-    else if (gamepad.PressedButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER)
-        m_SceneFactories.SelectNext();
-
-    // Switch scene if requested.
-    if (m_SceneFactories.GetSelected() != m_ActiveFactory)
-    {
-        SwitchScene();
-        return true;
-    }
-
-    return false;
 }
 
 bool App::OnDeviceChanged(DeviceChangedEvent &event)
@@ -128,29 +145,34 @@ bool App::OnDeviceChanged(DeviceChangedEvent &event)
     if (deviceInfo.Available)
     {
         std::string deviceName = deviceInfo.Name;
-        m_SceneFactories.PushBack(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
+        m_SceneFactories.emplace_back(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
     }
     // If a device was removed, remove its corresponding DeviceExplorer.
     else
     {
-        m_SceneFactories.RemoveIf([&](const SceneFactoryEntry &entry) {
-            return entry.DeviceName == deviceInfo.Name;
+        auto toRemove = std::find_if(m_SceneFactories.begin(), m_SceneFactories.end(), [&](const SceneFactoryEntry &entry) {
+            return entry.SceneName == deviceInfo.Name;
         });
+        XASSERT(toRemove != m_SceneFactories.end());
+        m_SceneFactories.erase(toRemove);
 
-        // If the removed DeviceExplorer was the current scene, switch to the closest
-        // available scene.
-        if (m_SceneFactories.GetSelected() != m_ActiveFactory)
-            SwitchScene();
+        // If the removed SceneFactoryEntry was for the active scene, destroy the scene.
+        // A new scene will be recreated on the next frame based on which tab ImGui fell
+        // back to after the removal.
+        bool wasActive = deviceInfo.Name == m_ActiveSceneName;
+        if (wasActive)
+        {
+            m_ActiveSceneName.clear();
+            m_CurrentScene.reset();
+        }
     }
 
     return false;
 }
 
-void App::SwitchScene()
+void App::SwitchScene(const SceneFactoryEntry &entry)
 {
-    XASSERT(m_SceneFactories.GetSelected() != nullptr);
-
     // Destroy the previous scene and create the new one.
-    m_ActiveFactory = m_SceneFactories.GetSelected();
-    m_CurrentScene.reset(m_ActiveFactory->Factory());
+    m_ActiveSceneName = entry.SceneName;
+    m_CurrentScene.reset(entry.Factory());
 }
