@@ -6,6 +6,7 @@
 
 #include "DeviceExplorer.h"
 #include "Exceptions.h"
+#include "InputWatcher.h"
 #include "Renderer.h"
 #include "ScopeGuard.h"
 #include "Scene.h"
@@ -14,13 +15,6 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
     : m_SelectedFileIndex(0), m_DirectoryTexture("game:\\assets\\images\\directory.png"), m_FileTexture("game:\\assets\\images\\file.png"), m_XexTexture("game:\\assets\\images\\xex.png")
 {
     ChangeDirectory(baseDir);
-}
-
-void DeviceExplorer::Update(XexUtils::Input::Gamepad *pGamepad)
-{
-    if (pGamepad->PressedButtons & XINPUT_GAMEPAD_B)
-        if (!m_CurrentDir.IsRoot())
-            ChangeDirectory(m_CurrentDir.Parent());
 }
 
 void DeviceExplorer::Render()
@@ -115,6 +109,29 @@ void DeviceExplorer::Render()
         changeDirectoryRequested = false;
         ChangeDirectory(m_CurrentDir / m_Files[m_SelectedFileIndex].Name);
     }
+}
+
+void DeviceExplorer::OnEvent(Event &event)
+{
+    EventDispatcher dispatcher(event);
+    dispatcher.Dispatch<ButtonPressedEvent>([this](ButtonPressedEvent &e) { return OnButtonPressed(e); });
+}
+
+bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
+{
+    const XexUtils::Input::Gamepad &gamepad = event.GetGamepad();
+
+    // Go to the parent directory when pressing B.
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_B)
+    {
+        if (!m_CurrentDir.IsRoot())
+        {
+            ChangeDirectory(m_CurrentDir.Parent());
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void DeviceExplorer::ChangeDirectory(const XexUtils::Fs::Path &newDir)

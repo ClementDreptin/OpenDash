@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "DeviceWatcher.h"
+#include "InputWatcher.h"
 #include "Renderer.h"
 #include "Scene.h"
 #include "SelectableList.h"
@@ -20,9 +21,7 @@ private:
     struct SceneFactoryEntry
     {
         SceneFactoryEntry(const std::string &deviceName, const std::function<Scene *()> &factory)
-            : DeviceName(deviceName), Factory(factory)
-        {
-        }
+            : DeviceName(deviceName), Factory(factory) {}
 
         std::string DeviceName;
         std::function<Scene *()> Factory;
@@ -30,6 +29,7 @@ private:
 
     Renderer m_Renderer;
     DeviceWatcher m_DeviceWatcher;
+    InputWatcher m_InputWatcher;
     SelectableList<SceneFactoryEntry> m_SceneFactories;
     std::unique_ptr<Scene> m_CurrentScene;
     SceneFactoryEntry *m_ActiveFactory;
@@ -37,6 +37,14 @@ private:
     void Update();
 
     void Render();
+
+    void PropagateEvent(Event &event);
+
+    void OnEvent(Event &event);
+
+    bool OnButtonPressed(ButtonPressedEvent &event);
+
+    bool OnDeviceChanged(DeviceChangedEvent &event);
 
     void SwitchScene();
 };

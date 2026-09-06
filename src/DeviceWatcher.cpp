@@ -4,6 +4,7 @@
 #include <XexUtils.h>
 
 #include "DeviceWatcher.h"
+#include "Event.h"
 #include "Exceptions.h"
 
 DeviceWatcher::DeviceWatcher()
@@ -15,7 +16,7 @@ DeviceWatcher::DeviceWatcher()
         throw Exception("[DeviceWatcher] Couldn't create the system notification listener.");
 }
 
-XexUtils::Optional<DeviceInfo> DeviceWatcher::Update()
+void DeviceWatcher::Update()
 {
     XASSERT(m_NotificationHandle);
 
@@ -23,10 +24,10 @@ XexUtils::Optional<DeviceInfo> DeviceWatcher::Update()
     // filter can only return one notification.
     DWORD id = 0;
     if (!XNotifyGetNext(m_NotificationHandle, XN_SYS_STORAGEDEVICESCHANGED, &id, nullptr))
-        return XexUtils::NullOpt();
+        return;
 
     // Update the list of devices if a notification arrived.
-    return UpdateDevices();
+    UpdateDevices();
 }
 
 const std::array<DeviceInfo, 2> &DeviceWatcher::GetDevices() const
@@ -56,7 +57,7 @@ void DeviceWatcher::InitializeDevices()
             MountDevice(m_Devices[i]);
 }
 
-XexUtils::Optional<DeviceInfo> DeviceWatcher::UpdateDevices()
+void DeviceWatcher::UpdateDevices()
 {
     for (size_t i = 0; i < m_Devices.size(); i++)
     {
@@ -76,10 +77,8 @@ XexUtils::Optional<DeviceInfo> DeviceWatcher::UpdateDevices()
         else
             UnmountDevice(deviceInfo);
 
-        return deviceInfo;
+        Emit(DeviceChangedEvent(deviceInfo));
     }
-
-    return XexUtils::NullOpt();
 }
 
 bool DeviceWatcher::IsPathAccessible(const XexUtils::Fs::Path &path)

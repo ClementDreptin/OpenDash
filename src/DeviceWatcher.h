@@ -5,6 +5,8 @@
 #include <string>
 #include <XexUtils.h>
 
+#include "Event.h"
+
 struct DeviceInfo
 {
     std::string Name;
@@ -12,12 +14,12 @@ struct DeviceInfo
     bool Available;
 };
 
-class DeviceWatcher
+class DeviceWatcher : public EventEmitter
 {
 public:
     DeviceWatcher();
 
-    XexUtils::Optional<DeviceInfo> Update();
+    void Update();
 
     const std::array<DeviceInfo, 2> &GetDevices() const;
 
@@ -27,11 +29,24 @@ private:
 
     void InitializeDevices();
 
-    XexUtils::Optional<DeviceInfo> UpdateDevices();
+    void UpdateDevices();
 
     bool IsPathAccessible(const XexUtils::Fs::Path &path);
 
     void MountDevice(const DeviceInfo &deviceInfo);
 
     void UnmountDevice(const DeviceInfo &deviceInfo);
+};
+
+class DeviceChangedEvent : public Event
+{
+public:
+    DeviceChangedEvent(const DeviceInfo &deviceInfo)
+        : m_DeviceInfo(deviceInfo) {}
+
+    const DeviceInfo &GetDeviceInfo() const { return m_DeviceInfo; }
+
+    EVENT_CLASS_TYPE(EventType_DeviceChanged)
+private:
+    DeviceInfo m_DeviceInfo;
 };
