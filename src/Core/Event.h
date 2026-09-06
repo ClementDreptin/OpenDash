@@ -2,6 +2,9 @@
 
 #include <functional>
 
+// This event system is heavily inspired by TheCherno's application architecture example:
+// https://github.com/TheCherno/Architecture/blob/main/Core/Source/Core/Event.h
+
 typedef enum _EventType
 {
     EventType_None,

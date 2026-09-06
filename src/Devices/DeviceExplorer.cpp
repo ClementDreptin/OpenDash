@@ -1,15 +1,15 @@
-#include <xtl.h>
-#include <vector>
+#include <XexUtils.h>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <XexUtils.h>
+#include <vector>
+#include <xtl.h>
 
+#include "../Core/Exceptions.h"
+#include "../Core/Scene.h"
+#include "../Input/InputWatcher.h"
+#include "../Renderer/Renderer.h"
+#include "../Utils/ScopeGuard.h"
 #include "DeviceExplorer.h"
-#include "Exceptions.h"
-#include "InputWatcher.h"
-#include "Renderer.h"
-#include "ScopeGuard.h"
-#include "Scene.h"
 
 DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
     : m_SelectedFileIndex(0), m_DirectoryTexture("game:\\assets\\images\\directory.png"), m_FileTexture("game:\\assets\\images\\file.png"), m_XexTexture("game:\\assets\\images\\xex.png")

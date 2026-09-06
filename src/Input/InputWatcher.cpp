@@ -1,6 +1,6 @@
 #include <XexUtils.h>
 
-#include "Event.h"
+#include "../Core/Event.h"
 #include "InputWatcher.h"
 
 void InputWatcher::Update()

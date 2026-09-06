@@ -14,7 +14,6 @@ IndentPPDirectives: BeforeHash
 KeepEmptyLinesAtTheStartOfBlocks: false
 RemoveBracesLLVM: true
 SeparateDefinitionBlocks: Always
-SortIncludes: Never # Sorting includes would be nice but pch.h always needs to be at the top
 SpaceAfterTemplateKeyword: false
 SpaceBeforeParens: ControlStatements
 SpacesInLineCommentPrefix:

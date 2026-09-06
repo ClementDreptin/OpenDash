@@ -1,13 +1,13 @@
 #pragma once
 
-#include <xtl.h>
+#include <XexUtils.h>
+#include <imgui.h>
 #include <string>
 #include <vector>
-#include <imgui.h>
-#include <XexUtils.h>
+#include <xtl.h>
 
-#include "Renderer.h"
-#include "Scene.h"
+#include "../Core/Scene.h"
+#include "../Renderer/Renderer.h"
 
 class GamesExplorer : public Scene
 {

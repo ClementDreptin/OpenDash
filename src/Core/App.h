@@ -4,11 +4,11 @@
 #include <memory>
 #include <vector>
 
-#include "DeviceWatcher.h"
-#include "InputWatcher.h"
-#include "Renderer.h"
-#include "Scene.h"
-#include "SelectableList.h"
+#include "../Core/Scene.h"
+#include "../Devices/DeviceWatcher.h"
+#include "../Input/InputWatcher.h"
+#include "../Renderer/Renderer.h"
+#include "../Utils/SelectableList.h"
 
 class App
 {

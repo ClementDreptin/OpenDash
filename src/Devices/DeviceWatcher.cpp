@@ -1,11 +1,11 @@
-#include <xtl.h>
+#include <XexUtils.h>
 #include <string>
 #include <unordered_map>
-#include <XexUtils.h>
+#include <xtl.h>
 
+#include "../Core/Event.h"
+#include "../Core/Exceptions.h"
 #include "DeviceWatcher.h"
-#include "Event.h"
-#include "Exceptions.h"
 
 DeviceWatcher::DeviceWatcher()
 {

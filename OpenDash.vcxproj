@@ -75,26 +75,26 @@
     </ImageXex>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\App.h" />
-    <ClInclude Include="src\DeviceExplorer.h" />
-    <ClInclude Include="src\DeviceWatcher.h" />
-    <ClInclude Include="src\Exceptions.h" />
-    <ClInclude Include="src\GamesExplorer.h" />
-    <ClInclude Include="src\InputWatcher.h" />
-    <ClInclude Include="src\Renderer.h" />
-    <ClInclude Include="src\Scene.h" />
-    <ClInclude Include="src\ScopeGuard.h" />
-    <ClInclude Include="src\SelectableList.h" />
+    <ClInclude Include="src\Core\App.h" />
+    <ClInclude Include="src\Core\Event.h" />
+    <ClInclude Include="src\Core\Exceptions.h" />
+    <ClInclude Include="src\Core\Scene.h" />
+    <ClInclude Include="src\Devices\DeviceExplorer.h" />
+    <ClInclude Include="src\Devices\DeviceWatcher.h" />
+    <ClInclude Include="src\Devices\GamesExplorer.h" />
+    <ClInclude Include="src\Input\InputWatcher.h" />
+    <ClInclude Include="src\Renderer\Renderer.h" />
+    <ClInclude Include="src\Utils\ScopeGuard.h" />
+    <ClInclude Include="src\Utils\SelectableList.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\App.cpp" />
-    <ClCompile Include="src\DeviceExplorer.cpp" />
-    <ClCompile Include="src\DeviceWatcher.cpp" />
-    <ClCompile Include="src\Exceptions.cpp" />
-    <ClCompile Include="src\GamesExplorer.cpp" />
-    <ClCompile Include="src\InputWatcher.cpp" />
-    <ClCompile Include="src\Renderer.cpp" />
-    <ClCompile Include="src\Scene.cpp" />
+    <ClCompile Include="src\Core\App.cpp" />
+    <ClCompile Include="src\Core\Exceptions.cpp" />
+    <ClCompile Include="src\Devices\DeviceExplorer.cpp" />
+    <ClCompile Include="src\Devices\DeviceWatcher.cpp" />
+    <ClCompile Include="src\Devices\GamesExplorer.cpp" />
+    <ClCompile Include="src\Input\InputWatcher.cpp" />
+    <ClCompile Include="src\Renderer\Renderer.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Target Name="CopyFonts" BeforeTargets="DeployToHardDrive">

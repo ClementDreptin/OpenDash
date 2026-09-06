@@ -1,8 +1,8 @@
 #pragma once
 
-#include <xtl.h>
-#include <imgui.h>
 #include <XexUtils.h>
+#include <imgui.h>
+#include <xtl.h>
 
 class Renderer
 {

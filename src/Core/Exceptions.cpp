@@ -1,13 +1,13 @@
-#include <xtl.h>
+#include <XexUtils.h>
 #include <cstdint>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <XexUtils.h>
+#include <xtl.h>
 
+#include "../Renderer/Renderer.h"
 #include "Exceptions.h"
-#include "Renderer.h"
 
 namespace Exceptions
 {

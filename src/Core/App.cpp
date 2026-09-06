@@ -1,18 +1,18 @@
+#include <XexUtils.h>
 #include <functional>
 #include <memory>
 #include <vector>
-#include <XexUtils.h>
 
+#include "../Core/Scene.h"
+#include "../Devices/DeviceExplorer.h"
+#include "../Devices/DeviceWatcher.h"
+#include "../Devices/GamesExplorer.h"
+#include "../Input/InputWatcher.h"
+#include "../Renderer/Renderer.h"
+#include "../Utils/SelectableList.h"
 #include "App.h"
-#include "DeviceExplorer.h"
-#include "DeviceWatcher.h"
 #include "Event.h"
 #include "Exceptions.h"
-#include "GamesExplorer.h"
-#include "InputWatcher.h"
-#include "Renderer.h"
-#include "Scene.h"
-#include "SelectableList.h"
 
 App::App()
     : m_ActiveFactory(nullptr)

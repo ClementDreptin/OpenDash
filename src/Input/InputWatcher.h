@@ -2,7 +2,7 @@
 
 #include <XexUtils.h>
 
-#include "Event.h"
+#include "../Core/Event.h"
 
 class InputWatcher : public EventEmitter
 {

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <xtl.h>
+#include <XexUtils.h>
 #include <array>
 #include <string>
-#include <XexUtils.h>
+#include <xtl.h>
 
-#include "Event.h"
+#include "../Core/Event.h"
 
 struct DeviceInfo
 {

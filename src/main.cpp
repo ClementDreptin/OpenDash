@@ -1,7 +1,7 @@
 #include <stdexcept>
 
-#include "App.h"
-#include "Exceptions.h"
+#include "Core/App.h"
+#include "Core/Exceptions.h"
 
 void __cdecl main()
 {

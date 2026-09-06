@@ -1,11 +1,11 @@
-#include <xtl.h>
+#include <XexUtils.h>
 #include <cstdint>
 #include <imgui.h>
-#include <imgui_impl_xbox360.h>
 #include <imgui_impl_dx9.h>
-#include <XexUtils.h>
+#include <imgui_impl_xbox360.h>
+#include <xtl.h>
 
-#include "Exceptions.h"
+#include "../Core/Exceptions.h"
 #include "Renderer.h"
 
 D3DDevice *Renderer::s_pDevice = nullptr;

@@ -1,15 +1,15 @@
-#include <xtl.h>
-#include <string>
-#include <vector>
+#include <XexUtils.h>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <XexUtils.h>
+#include <string>
+#include <vector>
+#include <xtl.h>
 
-#include "Exceptions.h"
+#include "../Core/Exceptions.h"
+#include "../Core/Scene.h"
+#include "../Renderer/Renderer.h"
+#include "../Utils/ScopeGuard.h"
 #include "GamesExplorer.h"
-#include "Renderer.h"
-#include "Scene.h"
-#include "ScopeGuard.h"
 
 // NOTE:
 // Right now, the background texture of each game is loaded ahead of time during the scan.

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <xtl.h>
 #include <stdexcept>
+#include <xtl.h>
 
 namespace Exceptions
 {

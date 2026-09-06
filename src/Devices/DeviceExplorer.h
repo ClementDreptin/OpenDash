@@ -1,12 +1,12 @@
 #pragma once
 
-#include <xtl.h>
-#include <vector>
 #include <XexUtils.h>
+#include <vector>
+#include <xtl.h>
 
-#include "InputWatcher.h"
-#include "Renderer.h"
-#include "Scene.h"
+#include "../Core/Scene.h"
+#include "../Input/InputWatcher.h"
+#include "../Renderer/Renderer.h"
 
 class DeviceExplorer : public Scene
 {
