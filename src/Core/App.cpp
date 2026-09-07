@@ -71,7 +71,6 @@ void App::Render()
         ImGuiWindowFlags_NoTitleBar |
         ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoNavFocus |
         ImGuiWindowFlags_NoMove;
 
     // Create a window that takes the full safe area with no decoration except for a border.
