@@ -104,9 +104,9 @@ void Renderer::InitImGui()
     m_pRegularFont = io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Geist-Regular.ttf", 24.0f);
 
     // Load the symbol font and merge it into the regular font.
+    static ImWchar symbolFontRanges[] = { 0xF020, 0xF0FD, 0 };
     ImFontConfig symbolFontConfig;
     symbolFontConfig.MergeMode = true;
-    ImWchar symbolFontRanges[] = { 0xF020, 0xF0FD, 0 };
     io.Fonts->AddFontFromFileTTF("game:\\assets\\fonts\\Convsym.ttf", 24.0f, &symbolFontConfig, symbolFontRanges);
 
     // Register the bold font.
