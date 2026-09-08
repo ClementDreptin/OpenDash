@@ -29,7 +29,7 @@ App::App()
         uint32_t gamesDirAttributes = GetFileAttributes("hdd:\\Games");
         bool hasGamesDir = gamesDirAttributes != 0xFFFFFFFF && (gamesDirAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         if (hasGamesDir)
-            m_SceneFactories.emplace_back(SceneFactoryEntry("Games Explorer", []() -> Scene * { return new GamesExplorer(); }));
+            m_SceneFactories.emplace_back(SceneFactoryEntry("Games", []() -> Scene * { return new GamesExplorer(); }));
     }
 
     // Go through all the available devices and add a DeviceExplorer for each.
