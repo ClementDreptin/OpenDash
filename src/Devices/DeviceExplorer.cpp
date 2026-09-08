@@ -1,6 +1,5 @@
 #include <XexUtils.h>
 #include <imgui.h>
-#include <imgui_internal.h>
 #include <utility>
 #include <vector>
 #include <xtl.h>
@@ -13,7 +12,7 @@
 #include "DeviceExplorer.h"
 
 DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
-    : m_SelectedFileIndex(0), m_DirectoryTexture("game:\\assets\\images\\directory.png"), m_FileTexture("game:\\assets\\images\\file.png"), m_XexTexture("game:\\assets\\images\\xex.png")
+    : m_SelectedFileIndex(0), m_DirectoryTexture("game:\\assets\\images\\directory.png"), m_FileTexture("game:\\assets\\images\\file.png"), m_XexTexture("game:\\assets\\images\\xex.png"), m_ShouldFocusFirstItem(false)
 {
     ChangeDirectory(baseDir);
 }
@@ -81,6 +80,16 @@ void DeviceExplorer::RenderFileList()
         // Save the cursor position before creating the selectable.
         ImVec2 cursorPos = ImGui::GetCursorPos();
 
+        // Force nav focus onto the first selectable if it's the first frame after chaging
+        // directory. Without this, the internal ImGui cursor still has the position from
+        // the previous directory, which might not even exist if the new directory has
+        // less files than the previous one.
+        if (i == 0 && m_ShouldFocusFirstItem)
+        {
+            ImGui::SetKeyboardFocusHere();
+            m_ShouldFocusFirstItem = false;
+        }
+
         // Create a selectable with an invisible text. It's invisible because it
         // starts with "##".
         std::string label = "##" + file.Name.String();
@@ -107,9 +116,6 @@ void DeviceExplorer::RenderFileList()
         ImGui::SetCursorPosY(cursorPos.y + (texture.GetHeight() - ImGui::GetTextLineHeight()) * 0.5f);
         ImGui::Text(file.Name.c_str());
     }
-
-    // Setup proper wrapping in the list.
-    ImGui::NavMoveRequestTryWrapping(ImGui::GetCurrentWindow(), ImGuiNavMoveFlags_LoopY);
 
     // Change directory if requested.
     if (changeDirectoryRequested)
@@ -178,6 +184,7 @@ void DeviceExplorer::ChangeDirectory(const XexUtils::Fs::Path &newDir)
     m_CurrentDir = newDir;
     m_SelectedFileIndex = 0;
     m_ErrorMessage.clear();
+    m_ShouldFocusFirstItem = true;
 
     // List the files.
     auto newFiles = XexUtils::Fs::ReadDirectory(newDir);

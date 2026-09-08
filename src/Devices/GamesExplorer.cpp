@@ -1,6 +1,5 @@
 #include <XexUtils.h>
 #include <imgui.h>
-#include <imgui_internal.h>
 #include <string>
 #include <vector>
 #include <xtl.h>
@@ -137,9 +136,6 @@ void GamesExplorer::RenderGameList()
         ImGui::SetCursorPosY(cursorPos.y + (s_IconSize.y - ImGui::GetTextLineHeight()) * 0.5f);
         ImGui::Text(game.Name.c_str());
     }
-
-    // Setup proper wrapping in the list.
-    ImGui::NavMoveRequestTryWrapping(ImGui::GetCurrentWindow(), ImGuiNavMoveFlags_LoopY);
 
     // The popup content.
     if (ImGui::BeginPopup("Game options"))

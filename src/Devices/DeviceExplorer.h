@@ -25,6 +25,7 @@ private:
     Texture m_FileTexture;
     Texture m_XexTexture;
     std::string m_ErrorMessage;
+    bool m_ShouldFocusFirstItem;
 
     void RenderFileList();
 
