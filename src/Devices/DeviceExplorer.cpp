@@ -1,6 +1,7 @@
 #include <XexUtils.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <utility>
 #include <vector>
 #include <xtl.h>
 
@@ -19,10 +20,27 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
 
 void DeviceExplorer::Render()
 {
+    RenderFileList();
+    RenderActionBar();
+}
+
+void DeviceExplorer::OnEvent(Event &event)
+{
+    EventDispatcher dispatcher(event);
+    dispatcher.Dispatch<ButtonPressedEvent>([this](ButtonPressedEvent &e) { return OnButtonPressed(e); });
+}
+
+void DeviceExplorer::RenderFileList()
+{
+    ImGuiWindowFlags windowFlags =
+        ImGuiWindowFlags_NavFlattened |
+        ImGuiWindowFlags_AlwaysUseWindowPadding;
+
     // Setup a child window with extra padding for the alignment.
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 12.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
-    ImGui::BeginChild("File list", ImVec2(), false, ImGuiWindowFlags_NavFlattened | ImGuiWindowFlags_AlwaysUseWindowPadding);
+    float listHeight = ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y;
+    ImGui::BeginChild("File list", ImVec2(0.0f, -listHeight), false, windowFlags);
 
     // Automatically end this window when this scope ends.
     auto endWindowGuard = MakeScopeGuard([]() {
@@ -101,10 +119,40 @@ void DeviceExplorer::Render()
     }
 }
 
-void DeviceExplorer::OnEvent(Event &event)
+void DeviceExplorer::RenderActionBar()
 {
-    EventDispatcher dispatcher(event);
-    dispatcher.Dispatch<ButtonPressedEvent>([this](ButtonPressedEvent &e) { return OnButtonPressed(e); });
+    ImGui::BeginChild("Action bar");
+
+    auto endWindowGuard = MakeScopeGuard([]() {
+        ImGui::EndChild();
+    });
+
+    bool hasSelection = !m_Files.empty() && m_SelectedFileIndex < m_Files.size();
+    bool isDir = hasSelection && (m_Files[m_SelectedFileIndex].Attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    bool isXex = hasSelection && m_Files[m_SelectedFileIndex].Name.Extension() == ".xex";
+
+    // Build the list of contextual hints based on the currently selected file.
+    std::vector<std::pair<const char *, const char *>> hints;
+
+    if (isDir)
+        hints.emplace_back(std::make_pair(CHAR_BUTTON_A, "Open"));
+    else if (isXex)
+        hints.emplace_back(std::make_pair(CHAR_BUTTON_A, "Launch"));
+
+    if (!m_CurrentDir.IsRoot())
+        hints.emplace_back(std::make_pair(CHAR_BUTTON_B, "Back"));
+
+    if (hints.empty())
+        return;
+
+    // Render the hints horizontally with some gap between them.
+    for (size_t i = 0; i < hints.size(); i++)
+    {
+        if (i != 0)
+            ImGui::SameLine(0.0f, 50.0f);
+
+        ImGui::Text("%s  %s", hints[i].first, hints[i].second);
+    }
 }
 
 bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)

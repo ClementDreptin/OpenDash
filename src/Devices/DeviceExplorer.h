@@ -26,6 +26,10 @@ private:
     Texture m_XexTexture;
     std::string m_ErrorMessage;
 
+    void RenderFileList();
+
+    void RenderActionBar();
+
     bool OnButtonPressed(ButtonPressedEvent &event);
 
     void ChangeDirectory(const XexUtils::Fs::Path &newDir);
