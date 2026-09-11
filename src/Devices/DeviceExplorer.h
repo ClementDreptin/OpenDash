@@ -29,9 +29,12 @@ private:
     std::string m_ErrorMessage;
     bool m_ShouldFocusFirstItem;
     bool m_ShouldOpenMenu;
+    bool m_ShouldOpenOptions;
     NativeKeyboard m_Keyboard;
 
     void RenderFileList();
+
+    void RenderOptions();
 
     void RenderMenu();
 
@@ -42,4 +45,6 @@ private:
     void ChangeDir(const XexUtils::Fs::Path &newDir);
 
     void CreateDir(const XexUtils::Fs::Path &newDir);
+
+    void DeleteFile(const XexUtils::Fs::Path &filePath);
 };

@@ -19,7 +19,8 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
       m_FileTexture("game:\\assets\\images\\file.png"),
       m_XexTexture("game:\\assets\\images\\xex.png"),
       m_ShouldFocusFirstItem(false),
-      m_ShouldOpenMenu(false)
+      m_ShouldOpenMenu(false),
+      m_ShouldOpenOptions(false)
 {
     ChangeDir(baseDir);
 }
@@ -27,6 +28,8 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
 void DeviceExplorer::Render()
 {
     RenderFileList();
+
+    RenderOptions();
 
     RenderMenu();
 
@@ -135,6 +138,81 @@ void DeviceExplorer::RenderFileList()
     }
 }
 
+void DeviceExplorer::RenderOptions()
+{
+    if (m_Files.empty())
+        return;
+
+    // Open the options popup if requested.
+    if (m_ShouldOpenOptions)
+    {
+        ImGui::OpenPopup("Options");
+        m_ShouldOpenOptions = false;
+    }
+
+    const XexUtils::Fs::File &file = m_Files[m_SelectedFileIndex];
+    bool shouldOpenConfirm = false;
+
+    // Begin the popup.
+    if (ImGui::BeginPopup("Options"))
+    {
+        // The delete button only opens the confirm modal.
+        if (ImGui::Button("Delete"))
+            shouldOpenConfirm = true;
+
+        ImGui::EndPopup();
+    }
+
+    // Open the confirm modal if requested.
+    if (shouldOpenConfirm)
+    {
+        ImGui::OpenPopup("Confirm");
+        shouldOpenConfirm = false;
+    }
+
+    // Begin the confirm modal.
+    if (ImGui::BeginPopupModal("Confirm", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("Are you sure you want to delete %s?", file.Name.c_str());
+        ImGui::NewLine();
+
+        // Align the buttons to the right of the modal.
+        ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
+        float spacing = ImGui::GetStyle().ItemSpacing.x;
+        float groupWidth = buttonSize.x * 2.0f + spacing;
+        float availWidth = ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - groupWidth);
+
+        if (ImGui::Button("Yes", buttonSize))
+        {
+            try
+            {
+                // Delete the file.
+                if (!(file.Attributes & FILE_ATTRIBUTE_DIRECTORY))
+                    DeleteFile(m_CurrentDir / file.Name);
+
+                // Refresh the file list.
+                ChangeDir(m_CurrentDir);
+
+                ImGui::CloseCurrentPopup();
+            }
+            catch (const std::exception &exception)
+            {
+                XexUtils::Xam::XNotify(exception.what(), XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
+            }
+        }
+
+        ImGui::SameLine();
+
+        // Select the "No" button by default.
+        if (ImGui::Button("No", buttonSize))
+            ImGui::CloseCurrentPopup();
+        ImGui::SetItemDefaultFocus();
+
+        ImGui::EndPopup();
+    }
+}
+
 void DeviceExplorer::RenderMenu()
 {
     // Open the menu popup if requested.
@@ -217,6 +295,9 @@ void DeviceExplorer::RenderActionBar()
     if (!m_CurrentDir.IsRoot())
         hints.emplace_back(std::make_pair(CHAR_BUTTON_B, "Back"));
 
+    if (hasSelection)
+        hints.emplace_back(std::make_pair(CHAR_BUTTON_Y, "Options"));
+
     hints.emplace_back(std::make_pair(CHAR_BUTTON_BACK, "Menu"));
 
     if (hints.empty())
@@ -236,6 +317,11 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
 {
     const XexUtils::Input::Gamepad &gamepad = event.GetGamepad();
 
+    // If any popup is open, let ImGui handle the button press. For example, we don't
+    // want to go the parent directory when pressing B to close a popup.
+    if (ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
+        return true;
+
     // Go to the parent directory when pressing B.
     if (gamepad.PressedButtons & XINPUT_GAMEPAD_B)
     {
@@ -244,6 +330,13 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
             ChangeDir(m_CurrentDir.Parent());
             return true;
         }
+    }
+
+    // Open the options when pressing Y.
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_Y)
+    {
+        m_ShouldOpenOptions = true;
+        return true;
     }
 
     // Open the menu when pressing back.
@@ -291,5 +384,21 @@ void DeviceExplorer::CreateDir(const XexUtils::Fs::Path &newDir)
             throw Exception("[DeviceExplorer]: A directory called %s already exists.", dirName.c_str());
 
         throw Exception("[DeviceExplorer]: Couldn't create the %s directory (%i).", dirName.c_str(), error);
+    }
+}
+
+void DeviceExplorer::DeleteFile(const XexUtils::Fs::Path &filePath)
+{
+    BOOL success = ::DeleteFile(filePath.c_str());
+    if (!success)
+    {
+        uint32_t error = GetLastError();
+        if (error == ERROR_FILE_NOT_FOUND)
+            throw Exception("[DeviceExplorer]: File not found.");
+
+        if (error == ERROR_ACCESS_DENIED)
+            throw Exception("[DeviceExplorer]: Access denied");
+
+        throw Exception("[DeviceExplorer]: Couldn't delete %s (%i).", filePath.Filename().c_str(), error);
     }
 }
