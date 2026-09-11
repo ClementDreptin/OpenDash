@@ -19,7 +19,7 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
       m_FileTexture("game:\\assets\\images\\file.png"),
       m_XexTexture("game:\\assets\\images\\xex.png"),
       m_ShouldFocusFirstItem(false),
-      m_ShouldOpenOptions(false)
+      m_ShouldOpenMenu(false)
 {
     ChangeDir(baseDir);
 }
@@ -28,7 +28,7 @@ void DeviceExplorer::Render()
 {
     RenderFileList();
 
-    RenderOptions();
+    RenderMenu();
 
     RenderActionBar();
 }
@@ -135,13 +135,13 @@ void DeviceExplorer::RenderFileList()
     }
 }
 
-void DeviceExplorer::RenderOptions()
+void DeviceExplorer::RenderMenu()
 {
-    // Open the options popup if requested.
-    if (m_ShouldOpenOptions)
+    // Open the menu popup if requested.
+    if (m_ShouldOpenMenu)
     {
-        ImGui::OpenPopup("Options");
-        m_ShouldOpenOptions = false;
+        ImGui::OpenPopup("Menu");
+        m_ShouldOpenMenu = false;
     }
 
     // Update the keyboard while it's open.
@@ -178,7 +178,7 @@ void DeviceExplorer::RenderOptions()
     ImGui::SetNextWindowPos(anchorPos, ImGuiCond_Always, ImVec2(1.0f, 0.5f));
 
     // Begin the popup.
-    if (ImGui::BeginPopup("Options"))
+    if (ImGui::BeginPopup("Menu"))
     {
         if (ImGui::Button("Create directory"))
             m_Keyboard.Show(
@@ -217,7 +217,7 @@ void DeviceExplorer::RenderActionBar()
     if (!m_CurrentDir.IsRoot())
         hints.emplace_back(std::make_pair(CHAR_BUTTON_B, "Back"));
 
-    hints.emplace_back(std::make_pair(CHAR_BUTTON_Y, "Options"));
+    hints.emplace_back(std::make_pair(CHAR_BUTTON_BACK, "Menu"));
 
     if (hints.empty())
         return;
@@ -246,10 +246,10 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
         }
     }
 
-    // Open the options when pressing Y.
-    if (gamepad.PressedButtons & XINPUT_GAMEPAD_Y)
+    // Open the menu when pressing back.
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_BACK)
     {
-        m_ShouldOpenOptions = true;
+        m_ShouldOpenMenu = true;
         return true;
     }
 

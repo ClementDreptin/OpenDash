@@ -28,12 +28,12 @@ private:
     Texture m_XexTexture;
     std::string m_ErrorMessage;
     bool m_ShouldFocusFirstItem;
-    bool m_ShouldOpenOptions;
+    bool m_ShouldOpenMenu;
     NativeKeyboard m_Keyboard;
 
     void RenderFileList();
 
-    void RenderOptions();
+    void RenderMenu();
 
     void RenderActionBar();
 

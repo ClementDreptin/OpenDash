@@ -71,9 +71,11 @@ private:
 // Macros for the UTF-8 bytes of the icons present in the Convsym font.
 // These macros are automatically generated with the generate-char-macros.ps1 script,
 // don't edit these manually!
-#define CHAR_BUTTON_A "\xEF\x81\x81"  // U+F041
-#define CHAR_BUTTON_B "\xEF\x81\x82"  // U+F042
-#define CHAR_BUTTON_X "\xEF\x81\x98"  // U+F058
-#define CHAR_BUTTON_Y "\xEF\x81\x99"  // U+F059
-#define CHAR_BUTTON_LB "\xEF\x81\x9F" // U+F05F
-#define CHAR_BUTTON_RB "\xEF\x81\xA0" // U+F060
+#define CHAR_BUTTON_A "\xEF\x81\x81"     // U+F041
+#define CHAR_BUTTON_B "\xEF\x81\x82"     // U+F042
+#define CHAR_BUTTON_X "\xEF\x81\x98"     // U+F058
+#define CHAR_BUTTON_Y "\xEF\x81\x99"     // U+F059
+#define CHAR_BUTTON_LB "\xEF\x81\x9F"    // U+F05F
+#define CHAR_BUTTON_RB "\xEF\x81\xA0"    // U+F060
+#define CHAR_BUTTON_BACK "\xEF\x80\xBA"  // U+F03A
+#define CHAR_BUTTON_START "\xEF\x80\xBB" // U+F03B

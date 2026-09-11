@@ -7,7 +7,9 @@ $icons = @(
     @{ Name = "CHAR_BUTTON_X"; Codepoint = 0xF058 },
     @{ Name = "CHAR_BUTTON_Y"; Codepoint = 0xF059 },
     @{ Name = "CHAR_BUTTON_LB"; Codepoint = 0xF05F },
-    @{ Name = "CHAR_BUTTON_RB"; Codepoint = 0xF060 }
+    @{ Name = "CHAR_BUTTON_RB"; Codepoint = 0xF060 },
+    @{ Name = "CHAR_BUTTON_BACK"; Codepoint = 0xF03A },
+    @{ Name = "CHAR_BUTTON_START"; Codepoint = 0xF03B }
 )
 
 function CodepointToUtf8Bytes {
