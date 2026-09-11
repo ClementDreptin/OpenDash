@@ -1,12 +1,14 @@
 #pragma once
 
 #include <XexUtils.h>
+#include <string>
 #include <vector>
 #include <xtl.h>
 
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
 #include "../Renderer/Renderer.h"
+#include "../Widgets/NativeKeyboard.h"
 
 class DeviceExplorer : public Scene
 {
@@ -26,12 +28,18 @@ private:
     Texture m_XexTexture;
     std::string m_ErrorMessage;
     bool m_ShouldFocusFirstItem;
+    bool m_ShouldOpenOptions;
+    NativeKeyboard m_Keyboard;
 
     void RenderFileList();
+
+    void RenderOptions();
 
     void RenderActionBar();
 
     bool OnButtonPressed(ButtonPressedEvent &event);
 
-    void ChangeDirectory(const XexUtils::Fs::Path &newDir);
+    void ChangeDir(const XexUtils::Fs::Path &newDir);
+
+    void CreateDir(const XexUtils::Fs::Path &newDir);
 };

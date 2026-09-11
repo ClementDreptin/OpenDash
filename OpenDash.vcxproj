@@ -85,6 +85,7 @@
     <ClInclude Include="src\Input\InputWatcher.h" />
     <ClInclude Include="src\Renderer\Renderer.h" />
     <ClInclude Include="src\Utils\ScopeGuard.h" />
+    <ClInclude Include="src\Widgets\NativeKeyboard.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\App.cpp" />
@@ -94,6 +95,7 @@
     <ClCompile Include="src\Devices\GamesExplorer.cpp" />
     <ClCompile Include="src\Input\InputWatcher.cpp" />
     <ClCompile Include="src\Renderer\Renderer.cpp" />
+    <ClCompile Include="src\Widgets\NativeKeyboard.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Target Name="CopyFonts" BeforeTargets="DeployToHardDrive">

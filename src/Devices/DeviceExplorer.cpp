@@ -1,5 +1,7 @@
 #include <XexUtils.h>
+#include <cstdint>
 #include <imgui.h>
+#include <string>
 #include <utility>
 #include <vector>
 #include <xtl.h>
@@ -12,14 +14,22 @@
 #include "DeviceExplorer.h"
 
 DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
-    : m_SelectedFileIndex(0), m_DirectoryTexture("game:\\assets\\images\\directory.png"), m_FileTexture("game:\\assets\\images\\file.png"), m_XexTexture("game:\\assets\\images\\xex.png"), m_ShouldFocusFirstItem(false)
+    : m_SelectedFileIndex(0),
+      m_DirectoryTexture("game:\\assets\\images\\directory.png"),
+      m_FileTexture("game:\\assets\\images\\file.png"),
+      m_XexTexture("game:\\assets\\images\\xex.png"),
+      m_ShouldFocusFirstItem(false),
+      m_ShouldOpenOptions(false)
 {
-    ChangeDirectory(baseDir);
+    ChangeDir(baseDir);
 }
 
 void DeviceExplorer::Render()
 {
     RenderFileList();
+
+    RenderOptions();
+
     RenderActionBar();
 }
 
@@ -121,7 +131,66 @@ void DeviceExplorer::RenderFileList()
     if (changeDirectoryRequested)
     {
         changeDirectoryRequested = false;
-        ChangeDirectory(m_CurrentDir / m_Files[m_SelectedFileIndex].Name);
+        ChangeDir(m_CurrentDir / m_Files[m_SelectedFileIndex].Name);
+    }
+}
+
+void DeviceExplorer::RenderOptions()
+{
+    // Open the options popup if requested.
+    if (m_ShouldOpenOptions)
+    {
+        ImGui::OpenPopup("Options");
+        m_ShouldOpenOptions = false;
+    }
+
+    // Update the keyboard while it's open.
+    if (m_Keyboard.GetState() == NativeKeyboard::State_Pending)
+        m_Keyboard.Update();
+
+    bool directoryCreated = false;
+    if (m_Keyboard.GetState() == NativeKeyboard::State_Success)
+    {
+        // Reset the state of the keyboard so that this if only runs once.
+        m_Keyboard.Reset();
+
+        try
+        {
+            // Change directory.
+            XexUtils::Fs::Path newDir = m_CurrentDir / m_Keyboard.GetResult();
+            CreateDir(newDir);
+            directoryCreated = true;
+
+            // Refresh the file list.
+            ChangeDir(m_CurrentDir);
+        }
+        catch (const Exception &exception)
+        {
+            XexUtils::Xam::XNotify(exception.what(), XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
+        }
+    }
+
+    // Stick the popup to the right side of the parent window and centered vertically.
+    ImVec2 windowPos = ImGui::GetWindowPos();
+    ImVec2 windowSize = ImGui::GetWindowSize();
+    ImVec2 windowPadding = ImGui::GetStyle().WindowPadding;
+    ImVec2 anchorPos(windowPos.x + windowSize.x - windowPadding.x, windowPos.y + windowSize.y * 0.5f);
+    ImGui::SetNextWindowPos(anchorPos, ImGuiCond_Always, ImVec2(1.0f, 0.5f));
+
+    // Begin the popup.
+    if (ImGui::BeginPopup("Options"))
+    {
+        if (ImGui::Button("Create directory"))
+            m_Keyboard.Show(
+                "Create directory",
+                XexUtils::Formatter::Format("Create a directory in %s.", m_CurrentDir.c_str())
+            );
+
+        // If the directory creation was successful, close this popup.
+        if (directoryCreated)
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
     }
 }
 
@@ -148,6 +217,8 @@ void DeviceExplorer::RenderActionBar()
     if (!m_CurrentDir.IsRoot())
         hints.emplace_back(std::make_pair(CHAR_BUTTON_B, "Back"));
 
+    hints.emplace_back(std::make_pair(CHAR_BUTTON_Y, "Options"));
+
     if (hints.empty())
         return;
 
@@ -170,15 +241,22 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
     {
         if (!m_CurrentDir.IsRoot())
         {
-            ChangeDirectory(m_CurrentDir.Parent());
+            ChangeDir(m_CurrentDir.Parent());
             return true;
         }
+    }
+
+    // Open the options when pressing Y.
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_Y)
+    {
+        m_ShouldOpenOptions = true;
+        return true;
     }
 
     return false;
 }
 
-void DeviceExplorer::ChangeDirectory(const XexUtils::Fs::Path &newDir)
+void DeviceExplorer::ChangeDir(const XexUtils::Fs::Path &newDir)
 {
     // Set the state.
     m_CurrentDir = newDir;
@@ -199,4 +277,19 @@ void DeviceExplorer::ChangeDirectory(const XexUtils::Fs::Path &newDir)
 
     // Save the list of files.
     m_Files = std::move(*newFiles);
+}
+
+void DeviceExplorer::CreateDir(const XexUtils::Fs::Path &newDir)
+{
+    BOOL success = CreateDirectory(newDir.c_str(), nullptr);
+    if (!success)
+    {
+        uint32_t error = GetLastError();
+        XexUtils::Fs::Path &dirName = newDir.Filename();
+
+        if (error == ERROR_ALREADY_EXISTS)
+            throw Exception("[DeviceExplorer]: A directory called %s already exists.", dirName.c_str());
+
+        throw Exception("[DeviceExplorer]: Couldn't create the %s directory (%i).", dirName.c_str(), error);
+    }
 }
