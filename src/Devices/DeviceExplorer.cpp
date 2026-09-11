@@ -187,9 +187,12 @@ void DeviceExplorer::RenderOptions()
         {
             try
             {
-                // Delete the file.
-                if (!(file.Attributes & FILE_ATTRIBUTE_DIRECTORY))
-                    DeleteFile(m_CurrentDir / file.Name);
+                // Delete the file or directory.
+                XexUtils::Fs::Path fullPath = m_CurrentDir / file.Name;
+                if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+                    DeleteDir(fullPath);
+                else
+                    DeleteFile(fullPath);
 
                 // Refresh the file list.
                 ChangeDir(m_CurrentDir);
@@ -400,5 +403,39 @@ void DeviceExplorer::DeleteFile(const XexUtils::Fs::Path &filePath)
             throw Exception("[DeviceExplorer]: Access denied");
 
         throw Exception("[DeviceExplorer]: Couldn't delete %s (%i).", filePath.Filename().c_str(), error);
+    }
+}
+
+void DeviceExplorer::DeleteDir(const XexUtils::Fs::Path &dirPath)
+{
+    // List the files in the directory.
+    auto files = XexUtils::Fs::ReadDirectory(dirPath);
+    if (!files)
+        throw Exception("[DeviceExplorer]: Couldn't read the files in %s.", dirPath.Filename().c_str());
+
+    // Delete every file inside the directory and recursively delete the sub directories.
+    for (size_t i = 0; i < files->size(); i++)
+    {
+        const auto &file = (*files)[i];
+        XexUtils::Fs::Path fullPath = dirPath / file.Name;
+
+        if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+            DeleteDir(fullPath);
+        else
+            DeleteFile(fullPath);
+    }
+
+    // Delete the current directory once it's empty.
+    BOOL success = RemoveDirectory(dirPath.c_str());
+    if (!success)
+    {
+        uint32_t error = GetLastError();
+        if (error == ERROR_FILE_NOT_FOUND)
+            throw Exception("[DeviceExplorer]: File not found.");
+
+        if (error == ERROR_ACCESS_DENIED)
+            throw Exception("[DeviceExplorer]: Access denied");
+
+        throw Exception("[DeviceExplorer]: Couldn't delete %s (%i).", dirPath.Filename().c_str(), error);
     }
 }

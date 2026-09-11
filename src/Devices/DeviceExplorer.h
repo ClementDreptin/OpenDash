@@ -47,4 +47,6 @@ private:
     void CreateDir(const XexUtils::Fs::Path &newDir);
 
     void DeleteFile(const XexUtils::Fs::Path &filePath);
+
+    void DeleteDir(const XexUtils::Fs::Path &dirPath);
 };
