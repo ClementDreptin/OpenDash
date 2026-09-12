@@ -52,6 +52,8 @@ private:
 
     void Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
 
+    void MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
+
     void Paste();
 
     void RefreshFileList();

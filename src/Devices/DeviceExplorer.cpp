@@ -484,17 +484,56 @@ void DeviceExplorer::DeleteDir(const XexUtils::Fs::Path &dirPath)
 
 void DeviceExplorer::Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
 {
-    XexUtils::Fs::Path newFilename = newPath.Filename();
+    // MoveFileEx from Win32 won't move directories across devices, even if the
+    // MOVEFILE_COPY_ALLOWED flag is passed, so a manual move of each file is required.
+    bool oldPathIsDir = (GetFileAttributes(oldPath.c_str()) & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    bool newPathIsOnDifferentDevice = oldPath.Drive() != newPath.Drive();
+    if (oldPathIsDir && newPathIsOnDifferentDevice)
+    {
+        MoveDirAcrossDevices(oldPath, newPath);
+        return;
+    }
 
+    // When copying files/directories on the same device, or regular files across devices,
+    // MoveFileEx can handle it directly.
     BOOL success = MoveFileEx(oldPath.c_str(), newPath.c_str(), MOVEFILE_COPY_ALLOWED);
     if (!success)
     {
+        XexUtils::Fs::Path newFilename = newPath.Filename();
+
         uint32_t error = GetLastError();
         if (error == ERROR_ALREADY_EXISTS)
             throw Exception("[DeviceExplorer]: A file or directory called %s already exists.", newFilename.c_str());
 
         throw Exception("[DeviceExplorer]: Couldn't move %s (%i).", newFilename.c_str(), error);
     }
+}
+
+void DeviceExplorer::MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
+{
+    BOOL success = CreateDirectory(newPath.c_str(), nullptr);
+    if (!success)
+    {
+        uint32_t error = GetLastError();
+        if (error != ERROR_ALREADY_EXISTS)
+            throw Exception("[DeviceExplorer]: Couldn't create directory %s (%i).", newPath.Filename().c_str(), error);
+    }
+
+    auto files = XexUtils::Fs::ReadDirectory(oldPath);
+    if (!files)
+        throw Exception("[DeviceExplorer]: Couldn't read the files in %s.", oldPath.Filename().c_str());
+
+    for (size_t i = 0; i < files->size(); i++)
+    {
+        const auto &file = (*files)[i];
+
+        if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+            MoveDirAcrossDevices(oldPath / file.Name, newPath / file.Name);
+        else
+            Move(oldPath / file.Name, newPath / file.Name);
+    }
+
+    DeleteDir(oldPath);
 }
 
 void DeviceExplorer::Paste()
