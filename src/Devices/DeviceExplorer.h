@@ -56,6 +56,8 @@ private:
 
     void CopyFile(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
 
+    void CopyDir(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
+
     void Paste();
 
     void RefreshFileList();

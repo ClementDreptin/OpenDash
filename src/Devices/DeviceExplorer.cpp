@@ -553,18 +553,24 @@ void DeviceExplorer::Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs:
 
 void DeviceExplorer::MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
 {
+    // Create the new directory.
     BOOL success = CreateDirectory(newPath.c_str(), nullptr);
     if (!success)
     {
         uint32_t error = GetLastError();
+
+        // It's fine if the new directory already exists, this allows merging the old
+        // directory into the new one.
         if (error != ERROR_ALREADY_EXISTS)
             throw Exception("[DeviceExplorer]: Couldn't create directory %s (%i).", newPath.Filename().c_str(), error);
     }
 
+    // List the files to move.
     auto files = XexUtils::Fs::ReadDirectory(oldPath);
     if (!files)
         throw Exception("[DeviceExplorer]: Couldn't read the files in %s.", oldPath.Filename().c_str());
 
+    // Move every file from the old directory to the new one and recursively move the sub directories.
     for (size_t i = 0; i < files->size(); i++)
     {
         const auto &file = (*files)[i];
@@ -575,6 +581,7 @@ void DeviceExplorer::MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, con
             Move(oldPath / file.Name, newPath / file.Name);
     }
 
+    // Delete the now empty old directory.
     DeleteDir(oldPath);
 }
 
@@ -590,16 +597,58 @@ void DeviceExplorer::CopyFile(const XexUtils::Fs::Path &oldPath, const XexUtils:
     }
 }
 
+void DeviceExplorer::CopyDir(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
+{
+    // Create the new directory.
+    BOOL success = CreateDirectory(newPath.c_str(), nullptr);
+    if (!success)
+    {
+        uint32_t error = GetLastError();
+
+        // It's fine if the new directory already exists, this allows merging the old
+        // directory into the new one.
+        if (error != ERROR_ALREADY_EXISTS)
+            throw Exception("[DeviceExplorer]: Couldn't create directory %s (%i).", newPath.Filename().c_str(), error);
+    }
+
+    // List the files to move.
+    auto files = XexUtils::Fs::ReadDirectory(oldPath);
+    if (!files)
+        throw Exception("[DeviceExplorer]: Couldn't read the files in %s.", oldPath.Filename().c_str());
+
+    // Copy every file from the old directory to the new one and recursively copy the sub directories.
+    for (size_t i = 0; i < files->size(); i++)
+    {
+        const auto &file = (*files)[i];
+
+        if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
+            CopyDir(oldPath / file.Name, newPath / file.Name);
+        else
+            CopyFile(oldPath / file.Name, newPath / file.Name);
+    }
+}
+
 void DeviceExplorer::Paste()
 {
     XASSERT(s_Clipboard.Action != ClipboardAction_None);
 
     XexUtils::Fs::Path destinationPath = m_CurrentDir / s_Clipboard.Path.Filename();
 
-    if (s_Clipboard.Action == ClipboardAction_Cut)
+    // Copy.
+    if (s_Clipboard.Action == ClipboardAction_Copy)
+    {
+        // Check if the copied path is a directory.
+        FILE_ATTRIBUTE clipboardPathAttributes = GetFileAttributes(s_Clipboard.Path.c_str());
+        bool clipboardPathIsDir = clipboardPathAttributes != 0xFFFFFFFF && (clipboardPathAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+        if (clipboardPathIsDir)
+            CopyDir(s_Clipboard.Path, destinationPath);
+        else
+            CopyFile(s_Clipboard.Path, destinationPath);
+    }
+    // Cut.
+    else if (s_Clipboard.Action == ClipboardAction_Cut)
         Move(s_Clipboard.Path, destinationPath);
-    else if (s_Clipboard.Action == ClipboardAction_Copy)
-        CopyFile(s_Clipboard.Path, destinationPath);
 
     s_Clipboard.Clear();
 }
