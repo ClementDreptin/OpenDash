@@ -482,25 +482,27 @@ void DeviceExplorer::DeleteDir(const XexUtils::Fs::Path &dirPath)
     }
 }
 
+void DeviceExplorer::Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
+{
+    XexUtils::Fs::Path newFilename = newPath.Filename();
+
+    BOOL success = MoveFileEx(oldPath.c_str(), newPath.c_str(), MOVEFILE_COPY_ALLOWED);
+    if (!success)
+    {
+        uint32_t error = GetLastError();
+        if (error == ERROR_ALREADY_EXISTS)
+            throw Exception("[DeviceExplorer]: A file or directory called %s already exists.", newFilename.c_str());
+
+        throw Exception("[DeviceExplorer]: Couldn't move %s (%i).", newFilename.c_str(), error);
+    }
+}
+
 void DeviceExplorer::Paste()
 {
     XASSERT(s_Clipboard.Action != ClipboardAction_None);
 
     if (s_Clipboard.Action == ClipboardAction_Cut)
-    {
-        XexUtils::Fs::Path clipboardFilename = s_Clipboard.Path.Filename();
-        XexUtils::Fs::Path newFileLocation = m_CurrentDir / clipboardFilename;
-
-        BOOL success = MoveFileEx(s_Clipboard.Path.c_str(), newFileLocation.c_str(), MOVEFILE_COPY_ALLOWED);
-        if (!success)
-        {
-            uint32_t error = GetLastError();
-            if (error == ERROR_ALREADY_EXISTS)
-                throw Exception("[DeviceExplorer]: A file or directory called %s already exists.", clipboardFilename.c_str());
-
-            throw Exception("[DeviceExplorer]: Couldn't move %s (%i).", clipboardFilename.c_str(), error);
-        }
-    }
+        Move(s_Clipboard.Path, m_CurrentDir / s_Clipboard.Path.Filename());
     else if (s_Clipboard.Action == ClipboardAction_Copy)
     {
         // TODO

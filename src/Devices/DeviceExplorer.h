@@ -50,6 +50,8 @@ private:
 
     void DeleteDir(const XexUtils::Fs::Path &dirPath);
 
+    void Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
+
     void Paste();
 
     void RefreshFileList();
