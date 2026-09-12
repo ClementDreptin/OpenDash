@@ -491,7 +491,7 @@ void DeviceExplorer::Paste()
         XexUtils::Fs::Path clipboardFilename = s_Clipboard.Path.Filename();
         XexUtils::Fs::Path newFileLocation = m_CurrentDir / clipboardFilename;
 
-        BOOL success = MoveFile(s_Clipboard.Path.c_str(), newFileLocation.c_str());
+        BOOL success = MoveFileEx(s_Clipboard.Path.c_str(), newFileLocation.c_str(), MOVEFILE_COPY_ALLOWED);
         if (!success)
         {
             uint32_t error = GetLastError();
