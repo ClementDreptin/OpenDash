@@ -280,9 +280,16 @@ void DeviceExplorer::RenderMenu()
         {
             if (ImGui::Button("Paste", buttonSize))
             {
-                Paste();
-                RefreshFileList();
-                ImGui::CloseCurrentPopup();
+                try
+                {
+                    Paste();
+                    RefreshFileList();
+                    ImGui::CloseCurrentPopup();
+                }
+                catch (const std::exception &exception)
+                {
+                    XexUtils::Xam::XNotify(exception.what(), XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
+                }
             }
         }
 
@@ -481,10 +488,18 @@ void DeviceExplorer::Paste()
 
     if (s_Clipboard.Action == ClipboardAction_Cut)
     {
-        XexUtils::Fs::Path newFileLocation = m_CurrentDir / s_Clipboard.Path.Filename();
+        XexUtils::Fs::Path clipboardFilename = s_Clipboard.Path.Filename();
+        XexUtils::Fs::Path newFileLocation = m_CurrentDir / clipboardFilename;
+
         BOOL success = MoveFile(s_Clipboard.Path.c_str(), newFileLocation.c_str());
         if (!success)
-            throw Exception("[DeviceExplorer]: Couldn't move");
+        {
+            uint32_t error = GetLastError();
+            if (error == ERROR_ALREADY_EXISTS)
+                throw Exception("[DeviceExplorer]: A file or directory called %s already exists.", clipboardFilename.c_str());
+
+            throw Exception("[DeviceExplorer]: Couldn't move %s (%i).", clipboardFilename.c_str(), error);
+        }
     }
     else if (s_Clipboard.Action == ClipboardAction_Copy)
     {
