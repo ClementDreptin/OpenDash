@@ -42,11 +42,37 @@ private:
 
     bool OnButtonPressed(ButtonPressedEvent &event);
 
-    void ChangeDir(const XexUtils::Fs::Path &newDir);
+    void ChangeDir(const XexUtils::Fs::Path &dirPath);
 
-    void CreateDir(const XexUtils::Fs::Path &newDir);
+    void CreateDir(const XexUtils::Fs::Path &dirPath);
 
     void DeleteFile(const XexUtils::Fs::Path &filePath);
 
     void DeleteDir(const XexUtils::Fs::Path &dirPath);
+
+    void Paste();
+
+    void RefreshFileList();
+
+private:
+    typedef enum _ClipboardAction
+    {
+        ClipboardAction_None,
+        ClipboardAction_Copy,
+        ClipboardAction_Cut,
+    } ClipboardAction;
+
+    struct Clipboard
+    {
+        ClipboardAction Action;
+        XexUtils::Fs::Path Path;
+
+        void Cut(const XexUtils::Fs::Path &path);
+
+        void Copy(const XexUtils::Fs::Path &path);
+
+        void Clear();
+    };
+
+    static Clipboard s_Clipboard;
 };

@@ -13,6 +13,8 @@
 #include "../Utils/ScopeGuard.h"
 #include "DeviceExplorer.h"
 
+DeviceExplorer::Clipboard DeviceExplorer::s_Clipboard;
+
 DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
     : m_SelectedFileIndex(0),
       m_DirectoryTexture("game:\\assets\\images\\directory.png"),
@@ -156,9 +158,17 @@ void DeviceExplorer::RenderOptions()
     // Begin the popup.
     if (ImGui::BeginPopup("Options"))
     {
+        ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
+
         // The delete button only opens the confirm modal.
-        if (ImGui::Button("Delete"))
+        if (ImGui::Button("Delete", buttonSize))
             shouldOpenConfirm = true;
+
+        if (ImGui::Button("Cut", buttonSize))
+        {
+            s_Clipboard.Cut(m_CurrentDir / file.Name);
+            ImGui::CloseCurrentPopup();
+        }
 
         ImGui::EndPopup();
     }
@@ -194,9 +204,7 @@ void DeviceExplorer::RenderOptions()
                 else
                     DeleteFile(fullPath);
 
-                // Refresh the file list.
-                ChangeDir(m_CurrentDir);
-
+                RefreshFileList();
                 ImGui::CloseCurrentPopup();
             }
             catch (const std::exception &exception)
@@ -240,10 +248,8 @@ void DeviceExplorer::RenderMenu()
             // Change directory.
             XexUtils::Fs::Path newDir = m_CurrentDir / m_Keyboard.GetResult();
             CreateDir(newDir);
+            RefreshFileList();
             directoryCreated = true;
-
-            // Refresh the file list.
-            ChangeDir(m_CurrentDir);
         }
         catch (const Exception &exception)
         {
@@ -261,11 +267,24 @@ void DeviceExplorer::RenderMenu()
     // Begin the popup.
     if (ImGui::BeginPopup("Menu"))
     {
-        if (ImGui::Button("Create directory"))
+        ImVec2 buttonSize(ImGui::GetFontSize() * 7.0f, 0.0f);
+
+        if (ImGui::Button("Create directory", buttonSize))
             m_Keyboard.Show(
                 "Create directory",
                 XexUtils::Formatter::Format("Create a directory in %s.", m_CurrentDir.c_str())
             );
+
+        // Only show the paste button if the clipboard contains something.
+        if (s_Clipboard.Action != ClipboardAction_None)
+        {
+            if (ImGui::Button("Paste", buttonSize))
+            {
+                Paste();
+                RefreshFileList();
+                ImGui::CloseCurrentPopup();
+            }
+        }
 
         // If the directory creation was successful, close this popup.
         if (directoryCreated)
@@ -314,6 +333,22 @@ void DeviceExplorer::RenderActionBar()
 
         ImGui::Text("%s  %s", hints[i].first, hints[i].second);
     }
+
+    // Render the current path in the clipboard if there is one.
+    if (s_Clipboard.Action != ClipboardAction_None)
+    {
+        // Create the text.
+        const char *actionText = (s_Clipboard.Action == ClipboardAction_Cut) ? "Cut" : "Copy";
+        std::string clipboardText = XexUtils::Formatter::Format("%s: %s", actionText, s_Clipboard.Path.String().c_str());
+
+        // Align the text to the right of the window.
+        float windowWidth = ImGui::GetWindowContentRegionMax().x;
+        float textWidth = ImGui::CalcTextSize(clipboardText.c_str()).x;
+        ImGui::SameLine(windowWidth - textWidth);
+
+        // Render the text.
+        ImGui::Text("%s", clipboardText.c_str());
+    }
 }
 
 bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
@@ -352,21 +387,21 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
     return false;
 }
 
-void DeviceExplorer::ChangeDir(const XexUtils::Fs::Path &newDir)
+void DeviceExplorer::ChangeDir(const XexUtils::Fs::Path &dirPath)
 {
     // Set the state.
-    m_CurrentDir = newDir;
+    m_CurrentDir = dirPath;
     m_SelectedFileIndex = 0;
     m_ErrorMessage.clear();
     m_ShouldFocusFirstItem = true;
 
     // List the files.
-    auto newFiles = XexUtils::Fs::ReadDirectory(newDir);
+    auto newFiles = XexUtils::Fs::ReadDirectory(dirPath);
     if (!newFiles)
     {
         m_ErrorMessage = XexUtils::Formatter::Format(
             "Couldn't read the files in %s. The directory may have been deleted.",
-            newDir.c_str()
+            dirPath.c_str()
         );
         return;
     }
@@ -375,13 +410,13 @@ void DeviceExplorer::ChangeDir(const XexUtils::Fs::Path &newDir)
     m_Files = std::move(*newFiles);
 }
 
-void DeviceExplorer::CreateDir(const XexUtils::Fs::Path &newDir)
+void DeviceExplorer::CreateDir(const XexUtils::Fs::Path &dirPath)
 {
-    BOOL success = CreateDirectory(newDir.c_str(), nullptr);
+    BOOL success = CreateDirectory(dirPath.c_str(), nullptr);
     if (!success)
     {
         uint32_t error = GetLastError();
-        XexUtils::Fs::Path &dirName = newDir.Filename();
+        XexUtils::Fs::Path &dirName = dirPath.Filename();
 
         if (error == ERROR_ALREADY_EXISTS)
             throw Exception("[DeviceExplorer]: A directory called %s already exists.", dirName.c_str());
@@ -438,4 +473,46 @@ void DeviceExplorer::DeleteDir(const XexUtils::Fs::Path &dirPath)
 
         throw Exception("[DeviceExplorer]: Couldn't delete %s (%i).", dirPath.Filename().c_str(), error);
     }
+}
+
+void DeviceExplorer::Paste()
+{
+    XASSERT(s_Clipboard.Action != ClipboardAction_None);
+
+    if (s_Clipboard.Action == ClipboardAction_Cut)
+    {
+        XexUtils::Fs::Path newFileLocation = m_CurrentDir / s_Clipboard.Path.Filename();
+        BOOL success = MoveFile(s_Clipboard.Path.c_str(), newFileLocation.c_str());
+        if (!success)
+            throw Exception("[DeviceExplorer]: Couldn't move");
+    }
+    else if (s_Clipboard.Action == ClipboardAction_Copy)
+    {
+        // TODO
+    }
+
+    s_Clipboard.Clear();
+}
+
+void DeviceExplorer::RefreshFileList()
+{
+    ChangeDir(m_CurrentDir);
+}
+
+void DeviceExplorer::Clipboard::Cut(const XexUtils::Fs::Path &path)
+{
+    s_Clipboard.Action = ClipboardAction_Cut;
+    s_Clipboard.Path = path;
+}
+
+void DeviceExplorer::Clipboard::Copy(const XexUtils::Fs::Path &path)
+{
+    s_Clipboard.Action = ClipboardAction_Copy;
+    s_Clipboard.Path = path;
+}
+
+void DeviceExplorer::Clipboard::Clear()
+{
+    s_Clipboard.Action = ClipboardAction_None;
+    s_Clipboard.Path = "";
 }
