@@ -195,6 +195,12 @@ void DeviceExplorer::RenderOptions()
             ImGui::CloseCurrentPopup();
         }
 
+        if (ImGui::Button("Copy", buttonSize))
+        {
+            s_Clipboard.Copy(m_CurrentDir / file.Name);
+            ImGui::CloseCurrentPopup();
+        }
+
         if (ImGui::Button("Rename", buttonSize))
             m_Keyboard.Show(
                 "Rename",
@@ -572,16 +578,28 @@ void DeviceExplorer::MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, con
     DeleteDir(oldPath);
 }
 
+void DeviceExplorer::CopyFile(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
+{
+    BOOL success = ::CopyFile(oldPath.c_str(), newPath.c_str(), FALSE);
+    if (!success)
+    {
+        XexUtils::Fs::Path newFilename = newPath.Filename();
+
+        uint32_t error = GetLastError();
+        throw Exception("[DeviceExplorer]: Couldn't copy %s (%i).", newFilename.c_str(), error);
+    }
+}
+
 void DeviceExplorer::Paste()
 {
     XASSERT(s_Clipboard.Action != ClipboardAction_None);
 
+    XexUtils::Fs::Path destinationPath = m_CurrentDir / s_Clipboard.Path.Filename();
+
     if (s_Clipboard.Action == ClipboardAction_Cut)
-        Move(s_Clipboard.Path, m_CurrentDir / s_Clipboard.Path.Filename());
+        Move(s_Clipboard.Path, destinationPath);
     else if (s_Clipboard.Action == ClipboardAction_Copy)
-    {
-        // TODO
-    }
+        CopyFile(s_Clipboard.Path, destinationPath);
 
     s_Clipboard.Clear();
 }
