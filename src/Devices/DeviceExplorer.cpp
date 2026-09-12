@@ -155,6 +155,31 @@ void DeviceExplorer::RenderOptions()
     const XexUtils::Fs::File &file = m_Files[m_SelectedFileIndex];
     bool shouldOpenConfirm = false;
 
+    // Update the keyboard while it's open.
+    if (m_Keyboard.GetState() == NativeKeyboard::State_Pending)
+        m_Keyboard.Update();
+
+    bool fileRenamed = false;
+    if (m_Keyboard.GetState() == NativeKeyboard::State_Success)
+    {
+        // Reset the state of the keyboard so that this if only runs once.
+        m_Keyboard.Reset();
+
+        try
+        {
+            // Rename the file.
+            XexUtils::Fs::Path oldPath = m_CurrentDir / file.Name;
+            XexUtils::Fs::Path newPath = m_CurrentDir / m_Keyboard.GetResult();
+            Move(oldPath, newPath);
+            RefreshFileList();
+            fileRenamed = true;
+        }
+        catch (const Exception &exception)
+        {
+            XexUtils::Xam::XNotify(exception.what(), XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
+        }
+    }
+
     // Begin the popup.
     if (ImGui::BeginPopup("Options"))
     {
@@ -169,6 +194,17 @@ void DeviceExplorer::RenderOptions()
             s_Clipboard.Cut(m_CurrentDir / file.Name);
             ImGui::CloseCurrentPopup();
         }
+
+        if (ImGui::Button("Rename", buttonSize))
+            m_Keyboard.Show(
+                "Rename",
+                XexUtils::Formatter::Format("Rename %s.", file.Name.c_str()),
+                file.Name.c_str()
+            );
+
+        // If the file rename was successful, close this popup.
+        if (fileRenamed)
+            ImGui::CloseCurrentPopup();
 
         ImGui::EndPopup();
     }
