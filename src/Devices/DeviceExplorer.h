@@ -1,6 +1,8 @@
 #pragma once
 
 #include <XexUtils.h>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 #include <xtl.h>
@@ -8,12 +10,15 @@
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
 #include "../Renderer/Renderer.h"
+#include "../Utils/AsyncFileOperation.h"
 #include "../Widgets/NativeKeyboard.h"
 
 class DeviceExplorer : public Scene
 {
 public:
     DeviceExplorer(const XexUtils::Fs::Path &baseDir);
+
+    ~DeviceExplorer();
 
     void Render() override;
 
@@ -31,6 +36,7 @@ private:
     bool m_ShouldOpenMenu;
     bool m_ShouldOpenOptions;
     NativeKeyboard m_Keyboard;
+    std::unique_ptr<AsyncFileOperation> m_ActiveOperation;
 
     void RenderFileList();
 
@@ -39,6 +45,8 @@ private:
     void RenderMenu();
 
     void RenderActionBar();
+
+    void RenderProgress();
 
     bool OnButtonPressed(ButtonPressedEvent &event);
 
@@ -50,13 +58,7 @@ private:
 
     void DeleteDir(const XexUtils::Fs::Path &dirPath);
 
-    void Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
-
-    void MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
-
-    void CopyFile(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
-
-    void CopyDir(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
+    void RenameFile(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath);
 
     void Paste();
 
@@ -83,4 +85,6 @@ private:
     };
 
     static Clipboard s_Clipboard;
+
+    static std::string FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces = 2);
 };

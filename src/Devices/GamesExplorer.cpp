@@ -286,8 +286,10 @@ DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
         if (!(file.Attributes & FILE_ATTRIBUTE_DIRECTORY))
             continue;
 
+        XexUtils::Fs::Path filename = file.FullPath.Filename();
+
         // ...that contain a file named default.xex.
-        XexUtils::Fs::Path gameDirPath = baseDir / file.Name;
+        XexUtils::Fs::Path gameDirPath = baseDir / filename;
         XexUtils::Fs::Path defaultXexPath = gameDirPath / "default.xex";
         bool hasDefaultXex = GetFileAttributes(defaultXexPath.c_str()) == FILE_ATTRIBUTE_NORMAL;
         if (!hasDefaultXex)
@@ -296,7 +298,7 @@ DWORD WINAPI GamesExplorer::ScanGamesThreadProc(void *pArgs)
         // Create the Game object.
         Game game;
         game.DirPath = gameDirPath;
-        game.Name = file.Name.String();
+        game.Name = filename.String();
         This->EnrichGameFromNxeart(game);
 
         // Push the Game object into the vector.

@@ -1,6 +1,9 @@
 #include <XexUtils.h>
 #include <cstdint>
 #include <imgui.h>
+#include <iomanip>
+#include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,6 +13,7 @@
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
 #include "../Renderer/Renderer.h"
+#include "../Utils/AsyncFileOperation.h"
 #include "../Utils/ScopeGuard.h"
 #include "DeviceExplorer.h"
 
@@ -27,6 +31,12 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
     ChangeDir(baseDir);
 }
 
+DeviceExplorer::~DeviceExplorer()
+{
+    if (m_ActiveOperation)
+        m_ActiveOperation->RequestCancel();
+}
+
 void DeviceExplorer::Render()
 {
     RenderFileList();
@@ -36,6 +46,8 @@ void DeviceExplorer::Render()
     RenderMenu();
 
     RenderActionBar();
+
+    RenderProgress();
 }
 
 void DeviceExplorer::OnEvent(Event &event)
@@ -88,7 +100,7 @@ void DeviceExplorer::RenderFileList()
 
         // Get the appropriate texture based on the file type.
         bool isDir = (file.Attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-        bool isXex = file.Name.Extension() == ".xex";
+        bool isXex = file.FullPath.Extension() == ".xex";
         const Texture &texture = isDir ? m_DirectoryTexture : isXex ? m_XexTexture
                                                                     : m_FileTexture;
 
@@ -107,13 +119,14 @@ void DeviceExplorer::RenderFileList()
 
         // Create a selectable with an invisible text. It's invisible because it
         // starts with "##".
-        std::string label = "##" + file.Name.String();
+        XexUtils::Fs::Path filename = file.FullPath.Filename();
+        std::string label = "##" + filename.String();
         if (ImGui::Selectable(label.c_str(), m_SelectedFileIndex == i, 0, ImVec2(0.0f, texture.GetHeight())))
         {
             if (isDir)
                 changeDirectoryRequested = true;
             else if (isXex)
-                XLaunchNewImage((m_CurrentDir / file.Name).c_str(), 0);
+                XLaunchNewImage(file.FullPath.c_str(), 0);
         }
 
         if (ImGui::IsItemFocused())
@@ -129,14 +142,14 @@ void DeviceExplorer::RenderFileList()
 
         // Vertically align the text with the middle of the icon.
         ImGui::SetCursorPosY(cursorPos.y + (texture.GetHeight() - ImGui::GetTextLineHeight()) * 0.5f);
-        ImGui::Text(file.Name.c_str());
+        ImGui::Text(filename.c_str());
     }
 
     // Change directory if requested.
     if (changeDirectoryRequested)
     {
         changeDirectoryRequested = false;
-        ChangeDir(m_CurrentDir / m_Files[m_SelectedFileIndex].Name);
+        ChangeDir(m_Files[m_SelectedFileIndex].FullPath);
     }
 }
 
@@ -153,6 +166,7 @@ void DeviceExplorer::RenderOptions()
     }
 
     const XexUtils::Fs::File &file = m_Files[m_SelectedFileIndex];
+    XexUtils::Fs::Path filename = file.FullPath.Filename();
     bool shouldOpenConfirm = false;
 
     // Update the keyboard while it's open.
@@ -168,9 +182,7 @@ void DeviceExplorer::RenderOptions()
         try
         {
             // Rename the file.
-            XexUtils::Fs::Path oldPath = m_CurrentDir / file.Name;
-            XexUtils::Fs::Path newPath = m_CurrentDir / m_Keyboard.GetResult();
-            Move(oldPath, newPath);
+            RenameFile(file.FullPath, m_CurrentDir / m_Keyboard.GetResult());
             RefreshFileList();
             fileRenamed = true;
         }
@@ -191,21 +203,21 @@ void DeviceExplorer::RenderOptions()
 
         if (ImGui::Button("Cut", buttonSize))
         {
-            s_Clipboard.Cut(m_CurrentDir / file.Name);
+            s_Clipboard.Cut(file.FullPath);
             ImGui::CloseCurrentPopup();
         }
 
         if (ImGui::Button("Copy", buttonSize))
         {
-            s_Clipboard.Copy(m_CurrentDir / file.Name);
+            s_Clipboard.Copy(file.FullPath);
             ImGui::CloseCurrentPopup();
         }
 
         if (ImGui::Button("Rename", buttonSize))
             m_Keyboard.Show(
                 "Rename",
-                XexUtils::Formatter::Format("Rename %s.", file.Name.c_str()),
-                file.Name.c_str()
+                XexUtils::Formatter::Format("Rename %s.", filename.c_str()),
+                filename.c_str()
             );
 
         // If the file rename was successful, close this popup.
@@ -225,7 +237,7 @@ void DeviceExplorer::RenderOptions()
     // Begin the confirm modal.
     if (ImGui::BeginPopupModal("Confirm", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text("Are you sure you want to delete %s?", file.Name.c_str());
+        ImGui::Text("Are you sure you want to delete %s?", filename.c_str());
         ImGui::NewLine();
 
         // Align the buttons to the right of the modal.
@@ -240,16 +252,15 @@ void DeviceExplorer::RenderOptions()
             try
             {
                 // Delete the file or directory.
-                XexUtils::Fs::Path fullPath = m_CurrentDir / file.Name;
                 if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
-                    DeleteDir(fullPath);
+                    DeleteDir(file.FullPath);
                 else
-                    DeleteFile(fullPath);
+                    DeleteFile(file.FullPath);
 
                 RefreshFileList();
                 ImGui::CloseCurrentPopup();
             }
-            catch (const std::exception &exception)
+            catch (const Exception &exception)
             {
                 XexUtils::Xam::XNotify(exception.what(), XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
             }
@@ -322,16 +333,8 @@ void DeviceExplorer::RenderMenu()
         {
             if (ImGui::Button("Paste", buttonSize))
             {
-                try
-                {
-                    Paste();
-                    RefreshFileList();
-                    ImGui::CloseCurrentPopup();
-                }
-                catch (const std::exception &exception)
-                {
-                    XexUtils::Xam::XNotify(exception.what(), XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
-                }
+                Paste();
+                ImGui::CloseCurrentPopup();
             }
         }
 
@@ -353,7 +356,7 @@ void DeviceExplorer::RenderActionBar()
 
     bool hasSelection = !m_Files.empty() && m_SelectedFileIndex < m_Files.size();
     bool isDir = hasSelection && (m_Files[m_SelectedFileIndex].Attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    bool isXex = hasSelection && m_Files[m_SelectedFileIndex].Name.Extension() == ".xex";
+    bool isXex = hasSelection && m_Files[m_SelectedFileIndex].FullPath.Extension() == ".xex";
 
     // Build the list of contextual hints based on the currently selected file.
     std::vector<std::pair<const char *, const char *>> hints;
@@ -397,6 +400,65 @@ void DeviceExplorer::RenderActionBar()
 
         // Render the text.
         ImGui::Text("%s", clipboardText.c_str());
+    }
+}
+
+void DeviceExplorer::RenderProgress()
+{
+    // Don't render anything when no operations are active.
+    if (!m_ActiveOperation)
+        return;
+
+    // Open the modal the first time.
+    if (!ImGui::IsPopupOpen("Progress"))
+        ImGui::OpenPopup("Progress");
+
+    // Render the modal.
+    ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvail().x * 0.4f, 0.0f));
+    if (ImGui::BeginPopupModal("Progress", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        AsyncFileOperation::Progress progress = m_ActiveOperation->GetProgress();
+
+        // Render the progress bars while the operation is running.
+        if (progress.CurrentStatus == AsyncFileOperation::Status_Running)
+        {
+            // Progress bar for the global progression.
+            ImGui::Text("Progress: %i / %i", progress.ProcessedFileCount, progress.TotalFileCount);
+            float fileCountFraction = static_cast<float>(progress.ProcessedFileCount) / static_cast<float>(progress.TotalFileCount);
+            ImGui::ProgressBar(fileCountFraction);
+            ImGui::NewLine();
+
+            // Progress bar for the file currently being processed.
+            ImGui::Text(
+                "%s: %s MB / %s MB",
+                progress.CurrentFilePath.Filename().c_str(),
+                FormatBytesAsMegabytes(progress.CurrentFileBytesTransferred).c_str(),
+                FormatBytesAsMegabytes(progress.CurrentFileSize).c_str()
+            );
+            double currentFileFraction = progress.CurrentFileSize > 0 ? static_cast<double>(progress.CurrentFileBytesTransferred) / static_cast<double>(progress.CurrentFileSize) : 0.0f;
+            ImGui::ProgressBar(static_cast<float>(currentFileFraction));
+            ImGui::NewLine();
+
+            // Align the cancel button to the right.
+            ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
+            float availWidth = ImGui::GetContentRegionAvail().x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - buttonSize.x);
+            if (ImGui::Button("Cancel", buttonSize))
+                m_ActiveOperation->RequestCancel();
+        }
+        else
+        {
+            // Display a notification if the operation failed.
+            if (progress.CurrentStatus == AsyncFileOperation::Status_Failed)
+                XexUtils::Xam::XNotify(progress.ErrorMessage, XexUtils::Xam::XNOTIFYUI_TYPE_AVOID_REVIEW);
+
+            // Refresh and close the popup.
+            RefreshFileList();
+            m_ActiveOperation.reset();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 }
 
@@ -501,12 +563,11 @@ void DeviceExplorer::DeleteDir(const XexUtils::Fs::Path &dirPath)
     for (size_t i = 0; i < files->size(); i++)
     {
         const auto &file = (*files)[i];
-        XexUtils::Fs::Path fullPath = dirPath / file.Name;
 
         if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
-            DeleteDir(fullPath);
+            DeleteDir(file.FullPath);
         else
-            DeleteFile(fullPath);
+            DeleteFile(file.FullPath);
     }
 
     // Delete the current directory once it's empty.
@@ -524,20 +585,8 @@ void DeviceExplorer::DeleteDir(const XexUtils::Fs::Path &dirPath)
     }
 }
 
-void DeviceExplorer::Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
+void DeviceExplorer::RenameFile(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
 {
-    // MoveFileEx from Win32 won't move directories across devices, even if the
-    // MOVEFILE_COPY_ALLOWED flag is passed, so a manual move of each file is required.
-    bool oldPathIsDir = (GetFileAttributes(oldPath.c_str()) & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    bool newPathIsOnDifferentDevice = oldPath.Drive() != newPath.Drive();
-    if (oldPathIsDir && newPathIsOnDifferentDevice)
-    {
-        MoveDirAcrossDevices(oldPath, newPath);
-        return;
-    }
-
-    // When copying files/directories on the same device, or regular files across devices,
-    // MoveFileEx can handle it directly.
     BOOL success = MoveFileEx(oldPath.c_str(), newPath.c_str(), MOVEFILE_COPY_ALLOWED);
     if (!success)
     {
@@ -547,84 +596,7 @@ void DeviceExplorer::Move(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs:
         if (error == ERROR_ALREADY_EXISTS)
             throw Exception("[DeviceExplorer]: A file or directory called %s already exists.", newFilename.c_str());
 
-        throw Exception("[DeviceExplorer]: Couldn't move %s (%i).", newFilename.c_str(), error);
-    }
-}
-
-void DeviceExplorer::MoveDirAcrossDevices(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
-{
-    // Create the new directory.
-    BOOL success = CreateDirectory(newPath.c_str(), nullptr);
-    if (!success)
-    {
-        uint32_t error = GetLastError();
-
-        // It's fine if the new directory already exists, this allows merging the old
-        // directory into the new one.
-        if (error != ERROR_ALREADY_EXISTS)
-            throw Exception("[DeviceExplorer]: Couldn't create directory %s (%i).", newPath.Filename().c_str(), error);
-    }
-
-    // List the files to move.
-    auto files = XexUtils::Fs::ReadDirectory(oldPath);
-    if (!files)
-        throw Exception("[DeviceExplorer]: Couldn't read the files in %s.", oldPath.Filename().c_str());
-
-    // Move every file from the old directory to the new one and recursively move the sub directories.
-    for (size_t i = 0; i < files->size(); i++)
-    {
-        const auto &file = (*files)[i];
-
-        if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
-            MoveDirAcrossDevices(oldPath / file.Name, newPath / file.Name);
-        else
-            Move(oldPath / file.Name, newPath / file.Name);
-    }
-
-    // Delete the now empty old directory.
-    DeleteDir(oldPath);
-}
-
-void DeviceExplorer::CopyFile(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
-{
-    BOOL success = ::CopyFile(oldPath.c_str(), newPath.c_str(), FALSE);
-    if (!success)
-    {
-        XexUtils::Fs::Path newFilename = newPath.Filename();
-
-        uint32_t error = GetLastError();
-        throw Exception("[DeviceExplorer]: Couldn't copy %s (%i).", newFilename.c_str(), error);
-    }
-}
-
-void DeviceExplorer::CopyDir(const XexUtils::Fs::Path &oldPath, const XexUtils::Fs::Path &newPath)
-{
-    // Create the new directory.
-    BOOL success = CreateDirectory(newPath.c_str(), nullptr);
-    if (!success)
-    {
-        uint32_t error = GetLastError();
-
-        // It's fine if the new directory already exists, this allows merging the old
-        // directory into the new one.
-        if (error != ERROR_ALREADY_EXISTS)
-            throw Exception("[DeviceExplorer]: Couldn't create directory %s (%i).", newPath.Filename().c_str(), error);
-    }
-
-    // List the files to move.
-    auto files = XexUtils::Fs::ReadDirectory(oldPath);
-    if (!files)
-        throw Exception("[DeviceExplorer]: Couldn't read the files in %s.", oldPath.Filename().c_str());
-
-    // Copy every file from the old directory to the new one and recursively copy the sub directories.
-    for (size_t i = 0; i < files->size(); i++)
-    {
-        const auto &file = (*files)[i];
-
-        if (file.Attributes & FILE_ATTRIBUTE_DIRECTORY)
-            CopyDir(oldPath / file.Name, newPath / file.Name);
-        else
-            CopyFile(oldPath / file.Name, newPath / file.Name);
+        throw Exception("[DeviceExplorer]: Couldn't rename %s (%i).", newFilename.c_str(), error);
     }
 }
 
@@ -633,22 +605,12 @@ void DeviceExplorer::Paste()
     XASSERT(s_Clipboard.Action != ClipboardAction_None);
 
     XexUtils::Fs::Path destinationPath = m_CurrentDir / s_Clipboard.Path.Filename();
+    m_ActiveOperation = std::unique_ptr<AsyncFileOperation>(new AsyncFileOperation());
 
-    // Copy.
     if (s_Clipboard.Action == ClipboardAction_Copy)
-    {
-        // Check if the copied path is a directory.
-        FILE_ATTRIBUTE clipboardPathAttributes = GetFileAttributes(s_Clipboard.Path.c_str());
-        bool clipboardPathIsDir = clipboardPathAttributes != 0xFFFFFFFF && (clipboardPathAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-
-        if (clipboardPathIsDir)
-            CopyDir(s_Clipboard.Path, destinationPath);
-        else
-            CopyFile(s_Clipboard.Path, destinationPath);
-    }
-    // Cut.
+        m_ActiveOperation->Copy(s_Clipboard.Path, destinationPath);
     else if (s_Clipboard.Action == ClipboardAction_Cut)
-        Move(s_Clipboard.Path, destinationPath);
+        m_ActiveOperation->Move(s_Clipboard.Path, destinationPath);
 
     s_Clipboard.Clear();
 }
@@ -674,4 +636,14 @@ void DeviceExplorer::Clipboard::Clear()
 {
     s_Clipboard.Action = ClipboardAction_None;
     s_Clipboard.Path = "";
+}
+
+std::string DeviceExplorer::FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces)
+{
+    double megabytes = static_cast<double>(bytes) / (1024.0 * 1024.0);
+
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(decimalPlaces) << megabytes;
+
+    return stream.str();
 }
