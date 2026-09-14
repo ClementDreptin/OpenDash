@@ -12,6 +12,7 @@ struct DeviceInfo
     std::string Name;
     XexUtils::Fs::Path Path;
     bool Available;
+    bool ReadOnly;
 };
 
 class DeviceWatcher : public EventEmitter
@@ -21,11 +22,11 @@ public:
 
     void Update();
 
-    const std::array<DeviceInfo, 2> &GetDevices() const;
+    const std::array<DeviceInfo, 3> &GetDevices() const;
 
 private:
     HANDLE m_NotificationHandle;
-    std::array<DeviceInfo, 2> m_Devices;
+    std::array<DeviceInfo, 3> m_Devices;
 
     void InitializeDevices();
 

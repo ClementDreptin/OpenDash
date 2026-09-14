@@ -19,14 +19,15 @@
 
 DeviceExplorer::Clipboard DeviceExplorer::s_Clipboard;
 
-DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir)
+DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir, bool readOnly)
     : m_SelectedFileIndex(0),
       m_DirectoryTexture("game:\\assets\\images\\directory.png"),
       m_FileTexture("game:\\assets\\images\\file.png"),
       m_XexTexture("game:\\assets\\images\\xex.png"),
       m_ShouldFocusFirstItem(false),
       m_ShouldOpenMenu(false),
-      m_ShouldOpenOptions(false)
+      m_ShouldOpenOptions(false),
+      m_ReadOnly(readOnly)
 {
     ChangeDir(baseDir);
 }
@@ -197,14 +198,22 @@ void DeviceExplorer::RenderOptions()
     {
         ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
 
-        // The delete button only opens the confirm modal.
-        if (ImGui::Button("Delete", buttonSize))
-            shouldOpenConfirm = true;
-
-        if (ImGui::Button("Cut", buttonSize))
+        // The delete button only opens the confirm modal and is not available for read
+        // only devices.
+        if (!m_ReadOnly)
         {
-            s_Clipboard.Cut(file.FullPath);
-            ImGui::CloseCurrentPopup();
+            if (ImGui::Button("Delete", buttonSize))
+                shouldOpenConfirm = true;
+        }
+
+        // Cut in not only available for read only devices.
+        if (!m_ReadOnly)
+        {
+            if (ImGui::Button("Cut", buttonSize))
+            {
+                s_Clipboard.Cut(file.FullPath);
+                ImGui::CloseCurrentPopup();
+            }
         }
 
         if (ImGui::Button("Copy", buttonSize))
@@ -213,12 +222,16 @@ void DeviceExplorer::RenderOptions()
             ImGui::CloseCurrentPopup();
         }
 
-        if (ImGui::Button("Rename", buttonSize))
-            m_Keyboard.Show(
-                "Rename",
-                XexUtils::Formatter::Format("Rename %s.", filename.c_str()),
-                filename.c_str()
-            );
+        // Rename in not only available for read only devices.
+        if (!m_ReadOnly)
+        {
+            if (ImGui::Button("Rename", buttonSize))
+                m_Keyboard.Show(
+                    "Rename",
+                    XexUtils::Formatter::Format("Rename %s.", filename.c_str()),
+                    filename.c_str()
+                );
+        }
 
         // If the file rename was successful, close this popup.
         if (fileRenamed)
@@ -372,7 +385,8 @@ void DeviceExplorer::RenderActionBar()
     if (hasSelection)
         hints.emplace_back(std::make_pair(CHAR_BUTTON_Y, "Options"));
 
-    hints.emplace_back(std::make_pair(CHAR_BUTTON_BACK, "Menu"));
+    if (!m_ReadOnly)
+        hints.emplace_back(std::make_pair(CHAR_BUTTON_BACK, "Menu"));
 
     if (hints.empty())
         return;
@@ -488,8 +502,8 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
         return true;
     }
 
-    // Open the menu when pressing back.
-    if (gamepad.PressedButtons & XINPUT_GAMEPAD_BACK)
+    // Open the menu when pressing back (the menu is not available for read only devices).
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_BACK && !m_ReadOnly)
     {
         m_ShouldOpenMenu = true;
         return true;

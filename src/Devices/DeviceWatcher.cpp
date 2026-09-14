@@ -30,7 +30,7 @@ void DeviceWatcher::Update()
     UpdateDevices();
 }
 
-const std::array<DeviceInfo, 2> &DeviceWatcher::GetDevices() const
+const std::array<DeviceInfo, 3> &DeviceWatcher::GetDevices() const
 {
     return m_Devices;
 }
@@ -42,6 +42,7 @@ void DeviceWatcher::InitializeDevices()
     hdd.Name = "hdd:";
     hdd.Path = "\\Device\\Harddisk0\\Partition1\\";
     hdd.Available = IsPathAccessible(hdd.Path);
+    hdd.ReadOnly = false;
     m_Devices[0] = hdd;
 
     // Register the first USB.
@@ -49,7 +50,16 @@ void DeviceWatcher::InitializeDevices()
     usb.Name = "usb:";
     usb.Path = "\\Device\\Mass0\\";
     usb.Available = IsPathAccessible(usb.Path);
+    usb.ReadOnly = false;
     m_Devices[1] = usb;
+
+    // Register the DVD.
+    DeviceInfo dvd;
+    dvd.Name = "dvd:";
+    dvd.Path = "\\Device\\Cdrom0\\";
+    dvd.Available = IsPathAccessible(dvd.Path);
+    dvd.ReadOnly = true;
+    m_Devices[2] = dvd;
 
     // Mount the available devices.
     for (size_t i = 0; i < m_Devices.size(); i++)

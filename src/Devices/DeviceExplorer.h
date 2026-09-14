@@ -16,7 +16,7 @@
 class DeviceExplorer : public Scene
 {
 public:
-    DeviceExplorer(const XexUtils::Fs::Path &baseDir);
+    DeviceExplorer(const XexUtils::Fs::Path &baseDir, bool readOnly = false);
 
     ~DeviceExplorer();
 
@@ -37,6 +37,7 @@ private:
     bool m_ShouldOpenOptions;
     NativeKeyboard m_Keyboard;
     std::unique_ptr<AsyncFileOperation> m_ActiveOperation;
+    bool m_ReadOnly;
 
     void RenderFileList();
 

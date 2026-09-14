@@ -40,7 +40,10 @@ App::App()
         if (device.Available)
         {
             std::string deviceName = device.Name;
-            m_SceneFactories.emplace_back(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
+            bool readOnly = device.ReadOnly;
+            m_SceneFactories.emplace_back(SceneFactoryEntry(deviceName, [deviceName, readOnly]() -> Scene * {
+                return new DeviceExplorer(deviceName + "\\", readOnly);
+            }));
         }
     }
 }
