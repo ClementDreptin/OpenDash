@@ -39,6 +39,7 @@ private:
     NativeKeyboard m_CreateDirKeyboard;
     std::unique_ptr<AsyncFileOperation> m_ActiveOperation;
     bool m_ReadOnly;
+    bool m_IsDvdAvailable;
 
     void RenderFileList();
 
@@ -64,6 +65,8 @@ private:
 
     void Paste();
 
+    void CopyDvd();
+
     void RefreshFileList();
 
 private:
@@ -87,6 +90,8 @@ private:
     };
 
     static Clipboard s_Clipboard;
+
+    static bool IsDvdAvailable();
 
     static std::string FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces = 2);
 };

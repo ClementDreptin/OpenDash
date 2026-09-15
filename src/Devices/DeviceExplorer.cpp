@@ -29,6 +29,12 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir, bool readOnly)
       m_ShouldOpenOptions(false),
       m_ReadOnly(readOnly)
 {
+    // The DVD is a special device because, unlike the USB, we can't detect when a DVD
+    // is inserted or removed because opening the disc tray while the app is running shuts
+    // down the app. If we want to use the DVD, it needs to be in the disc tray before the
+    // app starts, so only checking for it's presence on init is fine.
+    m_IsDvdAvailable = IsDvdAvailable();
+
     ChangeDir(baseDir);
 }
 
@@ -342,6 +348,16 @@ void DeviceExplorer::RenderMenu()
             }
         }
 
+        // Only show the copy DVD button if the DVD is available.
+        if (m_IsDvdAvailable)
+        {
+            if (ImGui::Button("Copy DVD", buttonSize))
+            {
+                CopyDvd();
+                ImGui::CloseCurrentPopup();
+            }
+        }
+
         // If the directory creation was successful, close this popup.
         if (directoryCreated)
             ImGui::CloseCurrentPopup();
@@ -620,6 +636,12 @@ void DeviceExplorer::Paste()
     s_Clipboard.Clear();
 }
 
+void DeviceExplorer::CopyDvd()
+{
+    m_ActiveOperation = std::unique_ptr<AsyncFileOperation>(new AsyncFileOperation());
+    m_ActiveOperation->Copy("dvd:\\", m_CurrentDir);
+}
+
 void DeviceExplorer::RefreshFileList()
 {
     ChangeDir(m_CurrentDir);
@@ -641,6 +663,23 @@ void DeviceExplorer::Clipboard::Clear()
 {
     s_Clipboard.Action = ClipboardAction_None;
     s_Clipboard.Path = "";
+}
+
+bool DeviceExplorer::IsDvdAvailable()
+{
+    // The DeviceWatcher will create a "dvd:" symlink if a DVD is in the disc tray, so
+    // we just check if this symlink exists.
+
+    STRING linkName = {};
+    OBJECT_ATTRIBUTES linkAttributes = {};
+    RtlInitAnsiString(&linkName, "\\??\\dvd:");
+    InitializeObjectAttributes(&linkAttributes, &linkName, OBJ_CASE_INSENSITIVE, nullptr);
+
+    HANDLE handle = INVALID_HANDLE_VALUE;
+    NTSTATUS status = NtOpenSymbolicLinkObject(&handle, &linkAttributes);
+    NtClose(handle);
+
+    return NT_SUCCESS(status);
 }
 
 std::string DeviceExplorer::FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces)
