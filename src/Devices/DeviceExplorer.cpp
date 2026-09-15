@@ -198,15 +198,13 @@ void DeviceExplorer::RenderOptions()
     {
         ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
 
-        // The delete button only opens the confirm modal and is not available for read
-        // only devices.
-        if (!m_ReadOnly)
+        if (ImGui::Button("Copy", buttonSize))
         {
-            if (ImGui::Button("Delete", buttonSize))
-                shouldOpenConfirm = true;
+            s_Clipboard.Copy(file.FullPath);
+            ImGui::CloseCurrentPopup();
         }
 
-        // Cut in not only available for read only devices.
+        // Actions that are not available for read only devices.
         if (!m_ReadOnly)
         {
             if (ImGui::Button("Cut", buttonSize))
@@ -214,23 +212,16 @@ void DeviceExplorer::RenderOptions()
                 s_Clipboard.Cut(file.FullPath);
                 ImGui::CloseCurrentPopup();
             }
-        }
 
-        if (ImGui::Button("Copy", buttonSize))
-        {
-            s_Clipboard.Copy(file.FullPath);
-            ImGui::CloseCurrentPopup();
-        }
-
-        // Rename in not only available for read only devices.
-        if (!m_ReadOnly)
-        {
             if (ImGui::Button("Rename", buttonSize))
                 m_Keyboard.Show(
                     "Rename",
                     XexUtils::Formatter::Format("Rename %s.", filename.c_str()),
                     filename.c_str()
                 );
+
+            if (ImGui::Button("Delete", buttonSize))
+                shouldOpenConfirm = true;
         }
 
         // If the file rename was successful, close this popup.
