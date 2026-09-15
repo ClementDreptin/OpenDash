@@ -10,7 +10,7 @@
 #include "../Devices/DeviceWatcher.h"
 #include "../Devices/GamesExplorer.h"
 #include "../Input/InputWatcher.h"
-#include "../Renderer/Renderer.h"
+#include "../UI/Renderer.h"
 #include "App.h"
 #include "Event.h"
 #include "Exceptions.h"

@@ -7,7 +7,7 @@
 #include "../Core/Scene.h"
 #include "../Devices/DeviceWatcher.h"
 #include "../Input/InputWatcher.h"
-#include "../Renderer/Renderer.h"
+#include "../UI/Renderer.h"
 
 class App
 {

@@ -12,7 +12,7 @@
 #include "../Core/Exceptions.h"
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
-#include "../Renderer/Renderer.h"
+#include "../UI/Renderer.h"
 #include "../Utils/AsyncFileOperation.h"
 #include "../Utils/ScopeGuard.h"
 #include "DeviceExplorer.h"

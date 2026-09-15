@@ -7,7 +7,7 @@
 #include <xtl.h>
 
 #include "../Core/Scene.h"
-#include "../Renderer/Renderer.h"
+#include "../UI/Renderer.h"
 
 class GamesExplorer : public Scene
 {

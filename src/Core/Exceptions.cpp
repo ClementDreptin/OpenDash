@@ -6,7 +6,7 @@
 #include <vector>
 #include <xtl.h>
 
-#include "../Renderer/Renderer.h"
+#include "../UI/Renderer.h"
 #include "Exceptions.h"
 
 namespace Exceptions

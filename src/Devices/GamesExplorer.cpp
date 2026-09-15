@@ -6,7 +6,7 @@
 
 #include "../Core/Exceptions.h"
 #include "../Core/Scene.h"
-#include "../Renderer/Renderer.h"
+#include "../UI/Renderer.h"
 #include "GamesExplorer.h"
 
 // NOTE:

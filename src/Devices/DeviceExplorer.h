@@ -9,9 +9,9 @@
 
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
-#include "../Renderer/Renderer.h"
+#include "../UI/NativeKeyboard.h"
+#include "../UI/Renderer.h"
 #include "../Utils/AsyncFileOperation.h"
-#include "../Widgets/NativeKeyboard.h"
 
 class DeviceExplorer : public Scene
 {
