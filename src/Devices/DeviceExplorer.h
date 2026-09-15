@@ -35,7 +35,8 @@ private:
     bool m_ShouldFocusFirstItem;
     bool m_ShouldOpenMenu;
     bool m_ShouldOpenOptions;
-    NativeKeyboard m_Keyboard;
+    NativeKeyboard m_RenameKeyboard;
+    NativeKeyboard m_CreateDirKeyboard;
     std::unique_ptr<AsyncFileOperation> m_ActiveOperation;
     bool m_ReadOnly;
 

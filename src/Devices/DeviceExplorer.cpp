@@ -171,19 +171,19 @@ void DeviceExplorer::RenderOptions()
     bool shouldOpenConfirm = false;
 
     // Update the keyboard while it's open.
-    if (m_Keyboard.GetState() == NativeKeyboard::State_Pending)
-        m_Keyboard.Update();
+    if (m_RenameKeyboard.GetState() == NativeKeyboard::State_Pending)
+        m_RenameKeyboard.Update();
 
     bool fileRenamed = false;
-    if (m_Keyboard.GetState() == NativeKeyboard::State_Success)
+    if (m_RenameKeyboard.GetState() == NativeKeyboard::State_Success)
     {
         // Reset the state of the keyboard so that this if only runs once.
-        m_Keyboard.Reset();
+        m_RenameKeyboard.Reset();
 
         try
         {
             // Rename the file.
-            RenameFile(file.FullPath, m_CurrentDir / m_Keyboard.GetResult());
+            RenameFile(file.FullPath, m_CurrentDir / m_RenameKeyboard.GetResult());
             RefreshFileList();
             fileRenamed = true;
         }
@@ -214,7 +214,7 @@ void DeviceExplorer::RenderOptions()
             }
 
             if (ImGui::Button("Rename", buttonSize))
-                m_Keyboard.Show(
+                m_RenameKeyboard.Show(
                     "Rename",
                     XexUtils::Formatter::Format("Rename %s.", filename.c_str()),
                     filename.c_str()
@@ -291,19 +291,19 @@ void DeviceExplorer::RenderMenu()
     }
 
     // Update the keyboard while it's open.
-    if (m_Keyboard.GetState() == NativeKeyboard::State_Pending)
-        m_Keyboard.Update();
+    if (m_CreateDirKeyboard.GetState() == NativeKeyboard::State_Pending)
+        m_CreateDirKeyboard.Update();
 
     bool directoryCreated = false;
-    if (m_Keyboard.GetState() == NativeKeyboard::State_Success)
+    if (m_CreateDirKeyboard.GetState() == NativeKeyboard::State_Success)
     {
         // Reset the state of the keyboard so that this if only runs once.
-        m_Keyboard.Reset();
+        m_CreateDirKeyboard.Reset();
 
         try
         {
-            // Change directory.
-            XexUtils::Fs::Path newDir = m_CurrentDir / m_Keyboard.GetResult();
+            // Create the directory.
+            XexUtils::Fs::Path newDir = m_CurrentDir / m_CreateDirKeyboard.GetResult();
             CreateDir(newDir);
             RefreshFileList();
             directoryCreated = true;
@@ -327,7 +327,7 @@ void DeviceExplorer::RenderMenu()
         ImVec2 buttonSize(ImGui::GetFontSize() * 7.0f, 0.0f);
 
         if (ImGui::Button("Create directory", buttonSize))
-            m_Keyboard.Show(
+            m_CreateDirKeyboard.Show(
                 "Create directory",
                 XexUtils::Formatter::Format("Create a directory in %s.", m_CurrentDir.c_str())
             );
