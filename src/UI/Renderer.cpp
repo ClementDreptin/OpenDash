@@ -7,6 +7,7 @@
 
 #include "../Core/Exceptions.h"
 #include "Renderer.h"
+#include "Theme.h"
 
 D3DDevice *Renderer::s_pDevice = nullptr;
 
@@ -41,7 +42,12 @@ void Renderer::EndFrame()
     s_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
 
     // Render the clear color background.
-    D3DCOLOR clearColor = D3DCOLOR_XRGB(9, 9, 11);
+    D3DCOLOR clearColor = D3DCOLOR_RGBA(
+        static_cast<uint32_t>(Theme::Colors::Crust.x * 255.0f),
+        static_cast<uint32_t>(Theme::Colors::Crust.y * 255.0f),
+        static_cast<uint32_t>(Theme::Colors::Crust.z * 255.0f),
+        static_cast<uint32_t>(Theme::Colors::Crust.w * 255.0f)
+    );
     s_pDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clearColor, 1.0f, 0);
 
     // Render ImGui.
@@ -116,7 +122,7 @@ void Renderer::InitImGui()
     io.FontDefault = m_pRegularFont;
 
     // Setup the Dear ImGui style.
-    ImGui::StyleColorsDark();
+    Theme::Apply();
 
     // Initialize the platform backend.
     if (!ImGui_ImplXbox360_Init())

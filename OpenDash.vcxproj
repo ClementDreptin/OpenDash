@@ -85,6 +85,7 @@
     <ClInclude Include="src\Input\InputWatcher.h" />
     <ClInclude Include="src\UI\NativeKeyboard.h" />
     <ClInclude Include="src\UI\Renderer.h" />
+    <ClInclude Include="src\UI\Theme.h" />
     <ClInclude Include="src\Utils\ScopeGuard.h" />
     <ClInclude Include="src\Utils\AsyncFileOperation.h" />
   </ItemGroup>
@@ -97,6 +98,7 @@
     <ClCompile Include="src\Input\InputWatcher.cpp" />
     <ClCompile Include="src\UI\NativeKeyboard.cpp" />
     <ClCompile Include="src\UI\Renderer.cpp" />
+    <ClCompile Include="src\UI\Theme.cpp" />
     <ClCompile Include="src\Utils\AsyncFileOperation.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>

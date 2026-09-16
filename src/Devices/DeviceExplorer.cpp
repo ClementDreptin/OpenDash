@@ -13,6 +13,7 @@
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
 #include "../UI/Renderer.h"
+#include "../UI/Theme.h"
 #include "../Utils/AsyncFileOperation.h"
 #include "../Utils/ScopeGuard.h"
 #include "DeviceExplorer.h"
@@ -70,7 +71,6 @@ void DeviceExplorer::RenderFileList()
         ImGuiWindowFlags_AlwaysUseWindowPadding;
 
     // Setup a child window with extra padding for the alignment.
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 12.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
     float listHeight = ImGui::GetTextLineHeight() + ImGui::GetStyle().ItemSpacing.y;
     ImGui::BeginChild("File list", ImVec2(0.0f, -listHeight), false, windowFlags);
@@ -78,7 +78,7 @@ void DeviceExplorer::RenderFileList()
     // Automatically end this window when this scope ends.
     auto endWindowGuard = MakeScopeGuard([]() {
         ImGui::EndChild();
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar();
     });
 
     // State to keep across renders.
@@ -87,7 +87,7 @@ void DeviceExplorer::RenderFileList()
     // Render the error message if there is one.
     if (!m_ErrorMessage.empty())
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.39f, 0.40f, 1.0f), m_ErrorMessage.c_str());
+        ImGui::TextColored(Theme::Colors::Red, m_ErrorMessage.c_str());
         return;
     }
 

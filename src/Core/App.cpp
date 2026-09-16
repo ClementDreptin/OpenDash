@@ -80,10 +80,6 @@ void App::Render()
     Renderer::Area safeArea = Renderer::GetSafeArea();
     ImGui::SetNextWindowPos(ImVec2(safeArea.Origin.x, safeArea.Origin.y));
     ImGui::SetNextWindowSize(ImVec2(safeArea.Width, safeArea.Height));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, 14.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
     ImGui::Begin("Main", nullptr, windowFlags);
 
     // Render a tab for each scene.
@@ -107,15 +103,11 @@ void App::Render()
         ImGui::EndTabBar();
     }
 
-    // Add some padding between the tabs and the content below.
-    ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
-
     // Render the current scene.
     if (m_CurrentScene)
         m_CurrentScene->Render();
 
     ImGui::End();
-    ImGui::PopStyleVar(4);
 
     // End the frame.
     m_Renderer.EndFrame();

@@ -63,12 +63,11 @@ void GamesExplorer::Render()
 
     // Render the games in the first column.
     ImVec2 listSize(ImGui::GetContentRegionAvail().x * 0.7f, ImGui::GetContentRegionAvail().y);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(12.0f, 12.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 6.0f));
     ImGui::BeginChild("Game list", listSize, false, ImGuiWindowFlags_NavFlattened | ImGuiWindowFlags_AlwaysUseWindowPadding);
     RenderGameList();
     ImGui::EndChild();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar();
 
     // Draw a vertical separator in the gap between the two columns, replicating
     // ImGuiTableFlags_BordersInnerV from a table-based layout.
@@ -116,7 +115,7 @@ void GamesExplorer::RenderGameList()
         // starts with "##".
         std::string label = "##" + game.Name;
         if (ImGui::Selectable(label.c_str(), m_SelectedGameIndex == i, 0, ImVec2(0.0f, s_IconSize.y)))
-            ImGui::OpenPopup("Game options");
+            XLaunchNewImage((game.DirPath / "default.xex").c_str(), 0);
 
         if (ImGui::IsItemFocused())
             m_SelectedGameIndex = i;
@@ -135,16 +134,6 @@ void GamesExplorer::RenderGameList()
         // Vertically align the text with the middle of the icon.
         ImGui::SetCursorPosY(cursorPos.y + (s_IconSize.y - ImGui::GetTextLineHeight()) * 0.5f);
         ImGui::Text(game.Name.c_str());
-    }
-
-    // The popup content.
-    if (ImGui::BeginPopup("Game options"))
-    {
-        // Launch the game.
-        if (ImGui::Selectable("Launch"))
-            XLaunchNewImage((m_Games[m_SelectedGameIndex].DirPath / "default.xex").c_str(), 0);
-
-        ImGui::EndPopup();
     }
 }
 
