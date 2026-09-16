@@ -445,7 +445,7 @@ void DeviceExplorer::RenderProgress()
         {
             // Progress bar for the global progression.
             ImGui::Text("Progress: %i / %i", progress.ProcessedFileCount, progress.TotalFileCount);
-            float fileCountFraction = static_cast<float>(progress.ProcessedFileCount) / static_cast<float>(progress.TotalFileCount);
+            float fileCountFraction = (progress.TotalFileCount > 0) ? static_cast<float>(progress.ProcessedFileCount) / static_cast<float>(progress.TotalFileCount) : 0.0f;
             ImGui::ProgressBar(fileCountFraction);
             ImGui::NewLine();
 
