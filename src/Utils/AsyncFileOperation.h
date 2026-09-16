@@ -3,6 +3,7 @@
 #include <XexUtils.h>
 #include <cstdint>
 #include <string>
+#include <vector>
 #include <xtl.h>
 
 class AsyncFileOperation
@@ -48,6 +49,7 @@ private:
     XexUtils::Fs::Path m_Destination;
     Progress m_Progress;
     mutable CRITICAL_SECTION m_ProgressLock;
+    std::vector<uint8_t> m_TransferBuffer;
 
     struct OperationCancelledException
     {
@@ -67,18 +69,6 @@ private:
     static DWORD WINAPI CopyHandler(void *pArgs);
 
     static DWORD WINAPI MoveHandler(void *pArgs);
-
-    static DWORD WINAPI ProgressCallback(
-        LARGE_INTEGER totalFileSize,
-        LARGE_INTEGER totalBytesTransferred,
-        LARGE_INTEGER streamSize,
-        LARGE_INTEGER streamBytesTransferred,
-        DWORD streamNumber,
-        DWORD callbackReason,
-        HANDLE sourceFileHandle,
-        HANDLE destinationFileHandle,
-        void *pData
-    );
 
 private:
     AsyncFileOperation(const AsyncFileOperation &);

@@ -2,10 +2,13 @@
 #include <algorithm>
 #include <cstdint>
 #include <string>
+#include <vector>
 #include <xtl.h>
 
 #include "../Core/Exceptions.h"
 #include "AsyncFileOperation.h"
+
+#define TRANSFER_BUFFER_SIZE 4 * 1024 * 1024 // 4 MB
 
 AsyncFileOperation::Progress::Progress()
     : CurrentStatus(Status_Running), TotalFileCount(0), ProcessedFileCount(0), CurrentFileSize(0), CurrentFileBytesTransferred(0)
@@ -62,8 +65,23 @@ AsyncFileOperation::Progress AsyncFileOperation::GetProgress() const
 
 void AsyncFileOperation::CopyFile(const XexUtils::Fs::Path &source, const XexUtils::Fs::Path &destination)
 {
+    // We are deliberately not using CopyFileEx nor MoveFileWithProgress, which take a
+    // callback to track progression, because the chunk size is very small (~64 KB) and
+    // making a lot of syscalls has a noticable overhead. So instead we implement our own
+    // buffered copy with a much bigger buffer to keep a balance between frequent progress
+    // updates and a limited amount of syscalls.
+
+    // Get the source file size.
+    WIN32_FILE_ATTRIBUTE_DATA sourceInfo = {};
+    BOOL success = GetFileAttributesEx(source.c_str(), GetFileExInfoStandard, &sourceInfo);
+    if (!success)
+        throw Exception("[AsyncFileOperation]: Couldn't get the size of %s (%i).", source.Filename().c_str(), GetLastError());
+
+    // Initialize the progress for the current file.
     EnterCriticalSection(&m_ProgressLock);
     m_Progress.CurrentFilePath = source;
+    m_Progress.CurrentFileBytesTransferred = 0;
+    m_Progress.CurrentFileSize = static_cast<uint64_t>(sourceInfo.nFileSizeHigh) << 32 | static_cast<uint64_t>(sourceInfo.nFileSizeLow);
 
     // If TotalFileCount is not set, it means we're copying a single file and not a
     // directory, so the file count is just 1.
@@ -71,17 +89,53 @@ void AsyncFileOperation::CopyFile(const XexUtils::Fs::Path &source, const XexUti
         m_Progress.TotalFileCount = 1;
     LeaveCriticalSection(&m_ProgressLock);
 
-    // Copy the file.
-    BOOL success = CopyFileEx(source.c_str(), destination.c_str(), ProgressCallback, this, nullptr, 0);
-    if (!success)
-    {
-        uint32_t error = GetLastError();
-        if (error == ERROR_REQUEST_ABORTED)
-            throw OperationCancelledException();
+    // Open the source file for reading.
+    HANDLE sourceHandle = CreateFile(source.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (sourceHandle == INVALID_HANDLE_VALUE)
+        throw Exception("[AsyncFileOperation]: Couldn't open %s for reading (%i).", source.Filename().c_str(), GetLastError());
 
-        XexUtils::Fs::Path destinationFilename = destination.Filename();
-        throw Exception("[AsyncFileOperation]: Couldn't copy %s (%i).", destinationFilename.c_str(), error);
+    // Open the destination file for writing.
+    HANDLE destinationHandle = CreateFile(destination.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (destinationHandle == INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(sourceHandle);
+        throw Exception("[AsyncFileOperation]: Couldn't open %s for writing (%i).", destination.Filename().c_str(), GetLastError());
     }
+
+    // Read the source file in chunks into the transfer buffer.
+    uint64_t totalCopied = 0;
+    DWORD bytesRead = 0;
+    while (ReadFile(sourceHandle, m_TransferBuffer.data(), m_TransferBuffer.size(), &bytesRead, nullptr) && bytesRead > 0)
+    {
+        // Write the read chunk to the destination file.
+        DWORD bytesWritten = 0;
+        if (!WriteFile(destinationHandle, m_TransferBuffer.data(), bytesRead, &bytesWritten, nullptr))
+        {
+            CloseHandle(sourceHandle);
+            CloseHandle(destinationHandle);
+            throw Exception("[AsyncFileOperation]: Couldn't write into %s (%i).", destination.Filename().c_str(), GetLastError());
+        }
+
+        // Keep track of how many bytes have been copied so far.
+        totalCopied += bytesWritten;
+
+        // Update the progress.
+        EnterCriticalSection(&m_ProgressLock);
+        m_Progress.CurrentFileBytesTransferred = totalCopied;
+        LeaveCriticalSection(&m_ProgressLock);
+
+        // Stop here if the operation was cancelled.
+        if (m_CancelRequested)
+            break;
+    }
+
+    // Close the files.
+    CloseHandle(sourceHandle);
+    CloseHandle(destinationHandle);
+
+    // Tell the caller the operation stopped because of a cancel request.
+    if (m_CancelRequested)
+        throw OperationCancelledException();
 
     // Update the progress.
     EnterCriticalSection(&m_ProgressLock);
@@ -131,17 +185,25 @@ void AsyncFileOperation::CopyDir(const XexUtils::Fs::Path &source, const XexUtil
 
 void AsyncFileOperation::MoveFile(const XexUtils::Fs::Path &source, const XexUtils::Fs::Path &destination)
 {
-    EnterCriticalSection(&m_ProgressLock);
-    m_Progress.CurrentFilePath = source;
+    // A move across different drives is actually a copy then a delete.
+    if (source.Drive() != destination.Drive())
+    {
+        CopyFile(source, destination);
 
-    // If TotalFileCount is not set, it means we're moving a single file and not a
-    // directory, so the file count is just 1.
-    if (m_Progress.TotalFileCount == 0)
-        m_Progress.TotalFileCount = 1;
-    LeaveCriticalSection(&m_ProgressLock);
+        BOOL success = DeleteFile(source.c_str());
+        if (!success)
+            throw Exception(
+                "[AsyncFileOperation]: Couldn't delete %s after moving it (%i).",
+                source.Filename().c_str(),
+                GetLastError()
+            );
 
-    // Move the file.
-    BOOL success = MoveFileEx(source.c_str(), destination.c_str(), MOVEFILE_COPY_ALLOWED);
+        return;
+    }
+
+    // Moving a file or a directory on the same drive is a simple, fast, atomic operation
+    // so it doesn't need a detailed progress.
+    BOOL success = ::MoveFile(source.c_str(), destination.c_str());
     if (!success)
     {
         uint32_t error = GetLastError();
@@ -154,11 +216,6 @@ void AsyncFileOperation::MoveFile(const XexUtils::Fs::Path &source, const XexUti
 
         throw Exception("[AsyncFileOperation]: Couldn't move %s (%i).", newFilename.c_str(), error);
     }
-
-    // Update the progress.
-    EnterCriticalSection(&m_ProgressLock);
-    m_Progress.ProcessedFileCount++;
-    LeaveCriticalSection(&m_ProgressLock);
 }
 
 void AsyncFileOperation::MoveDirAcrossDevices(const XexUtils::Fs::Path &source, const XexUtils::Fs::Path &destination)
@@ -233,6 +290,9 @@ DWORD WINAPI AsyncFileOperation::CopyHandler(void *pArgs)
 
     try
     {
+        // Prepare the transfer buffer.
+        This->m_TransferBuffer.resize(TRANSFER_BUFFER_SIZE);
+
         // Perform the copy.
         if (sourceIsDir)
             This->CopyDir(This->m_Source, This->m_Destination);
@@ -271,6 +331,9 @@ DWORD WINAPI AsyncFileOperation::MoveHandler(void *pArgs)
 
     try
     {
+        // Prepare the transfer buffer.
+        This->m_TransferBuffer.resize(TRANSFER_BUFFER_SIZE);
+
         // Perform the move.
         if (sourceIsDir && destinationIsOnDifferentDevice)
             This->MoveDirAcrossDevices(This->m_Source, This->m_Destination);
@@ -295,27 +358,4 @@ DWORD WINAPI AsyncFileOperation::MoveHandler(void *pArgs)
     }
 
     return 0;
-}
-
-DWORD WINAPI AsyncFileOperation::ProgressCallback(
-    LARGE_INTEGER totalFileSize,
-    LARGE_INTEGER totalBytesTransferred,
-    LARGE_INTEGER streamSize,
-    LARGE_INTEGER streamBytesTransferred,
-    DWORD streamNumber,
-    DWORD callbackReason,
-    HANDLE sourceFileHandle,
-    HANDLE destinationFileHandle,
-    void *pData
-)
-{
-    AsyncFileOperation *This = static_cast<AsyncFileOperation *>(pData);
-
-    // Update the progress.
-    EnterCriticalSection(&This->m_ProgressLock);
-    This->m_Progress.CurrentFileSize = static_cast<uint64_t>(totalFileSize.QuadPart);
-    This->m_Progress.CurrentFileBytesTransferred = static_cast<uint64_t>(totalBytesTransferred.QuadPart);
-    LeaveCriticalSection(&This->m_ProgressLock);
-
-    return This->m_CancelRequested ? PROGRESS_CANCEL : PROGRESS_CONTINUE;
 }
