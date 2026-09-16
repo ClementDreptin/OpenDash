@@ -8,7 +8,7 @@
 #include "../Core/Exceptions.h"
 #include "AsyncFileOperation.h"
 
-#define TRANSFER_BUFFER_SIZE 4 * 1024 * 1024 // 4 MB
+static const size_t s_TansferBufferSize = 4 * 1024 * 1024; // 4 MB
 
 AsyncFileOperation::Progress::Progress()
     : CurrentStatus(Status_Running), TotalFileCount(0), ProcessedFileCount(0), CurrentFileSize(0), CurrentFileBytesTransferred(0)
@@ -206,11 +206,9 @@ void AsyncFileOperation::MoveFile(const XexUtils::Fs::Path &source, const XexUti
     BOOL success = ::MoveFile(source.c_str(), destination.c_str());
     if (!success)
     {
-        uint32_t error = GetLastError();
-        if (error == ERROR_REQUEST_ABORTED)
-            throw OperationCancelledException();
-
         XexUtils::Fs::Path newFilename = destination.Filename();
+
+        uint32_t error = GetLastError();
         if (error == ERROR_ALREADY_EXISTS)
             throw Exception("[AsyncFileOperation]: A file or directory called %s already exists.", newFilename.c_str());
 
@@ -291,7 +289,7 @@ DWORD WINAPI AsyncFileOperation::CopyHandler(void *pArgs)
     try
     {
         // Prepare the transfer buffer.
-        This->m_TransferBuffer.resize(TRANSFER_BUFFER_SIZE);
+        This->m_TransferBuffer.resize(s_TansferBufferSize);
 
         // Perform the copy.
         if (sourceIsDir)
@@ -332,7 +330,7 @@ DWORD WINAPI AsyncFileOperation::MoveHandler(void *pArgs)
     try
     {
         // Prepare the transfer buffer.
-        This->m_TransferBuffer.resize(TRANSFER_BUFFER_SIZE);
+        This->m_TransferBuffer.resize(s_TansferBufferSize);
 
         // Perform the move.
         if (sourceIsDir && destinationIsOnDifferentDevice)
