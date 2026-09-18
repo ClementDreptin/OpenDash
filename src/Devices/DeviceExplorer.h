@@ -7,6 +7,7 @@
 #include <vector>
 #include <xtl.h>
 
+#include "../Core/Event.h"
 #include "../Core/Scene.h"
 #include "../Input/InputWatcher.h"
 #include "../UI/NativeKeyboard.h"

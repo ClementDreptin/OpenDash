@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "../Core/Event.h"
 #include "../Core/Scene.h"
 #include "../Devices/DeviceWatcher.h"
 #include "../Input/InputWatcher.h"

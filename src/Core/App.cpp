@@ -10,6 +10,7 @@
 #include "../Devices/DeviceWatcher.h"
 #include "../Devices/GamesExplorer.h"
 #include "../Input/InputWatcher.h"
+#include "../System/SystemInfo.h"
 #include "../UI/Renderer.h"
 #include "App.h"
 #include "Event.h"
@@ -46,6 +47,9 @@ App::App()
             }));
         }
     }
+
+    // Add the SystemInfo scene.
+    m_SceneFactories.emplace_back(SceneFactoryEntry("System Info", []() -> Scene * { return new SystemInfo(); }));
 }
 
 void App::Run()
