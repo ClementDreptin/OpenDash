@@ -62,6 +62,8 @@ DeviceExplorer::~DeviceExplorer()
 
 void DeviceExplorer::Render()
 {
+    RenderCurrentDir();
+
     RenderFileList();
 
     RenderOptions();
@@ -79,6 +81,12 @@ void DeviceExplorer::OnEvent(Event &event)
 {
     EventDispatcher dispatcher(event);
     dispatcher.Dispatch<ButtonPressedEvent>([this](ButtonPressedEvent &e) { return OnButtonPressed(e); });
+}
+
+void DeviceExplorer::RenderCurrentDir()
+{
+    ImGui::Text("%s", m_CurrentDir.c_str());
+    ImGui::Separator();
 }
 
 void DeviceExplorer::RenderFileList()

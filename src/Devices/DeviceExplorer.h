@@ -46,6 +46,8 @@ private:
     uint64_t m_FreeBytes;
     uint64_t m_TotalBytes;
 
+    void RenderCurrentDir();
+
     void RenderFileList();
 
     void RenderOptions();
