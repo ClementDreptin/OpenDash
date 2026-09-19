@@ -170,11 +170,23 @@ void DeviceExplorer::RenderFileList()
 
         // Render the appropriate icon.
         ImGui::Image(texture.GetHandle(), ImVec2(texture.GetWidth(), texture.GetHeight()));
-        ImGui::SameLine();
 
         // Vertically align the text with the middle of the icon.
+        ImGui::SameLine();
         ImGui::SetCursorPosY(cursorPos.y + (texture.GetHeight() - ImGui::GetTextLineHeight()) * 0.5f);
         ImGui::Text(filename.c_str());
+
+        // Render the file size.
+        float availableWidth = ImGui::GetContentRegionAvail().x;
+        if (!isDir)
+        {
+            ImGui::SameLine(availableWidth * 0.75f);
+            ImGui::Text(FormatBytesAsFileSize(file.Size, 1).c_str());
+        }
+
+        // Render the last modification date.
+        ImGui::SameLine(availableWidth * 0.85f);
+        ImGui::Text(TimeToString(file.LastWriteTime).c_str());
     }
 
     // Change directory if requested.
@@ -279,8 +291,8 @@ void DeviceExplorer::RenderOptions()
         ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
         float spacing = ImGui::GetStyle().ItemSpacing.x;
         float groupWidth = buttonSize.x * 2.0f + spacing;
-        float availWidth = ImGui::GetContentRegionAvail().x;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - groupWidth);
+        float availableWidth = ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - groupWidth);
 
         if (ImGui::Button("Yes", buttonSize))
         {
@@ -478,10 +490,10 @@ void DeviceExplorer::RenderProgress()
 
             // Progress bar for the file currently being processed.
             ImGui::Text(
-                "%s: %s MB / %s MB",
+                "%s: %s / %s",
                 progress.CurrentFilePath.Filename().c_str(),
-                FormatBytesAsMegabytes(progress.CurrentFileBytesTransferred).c_str(),
-                FormatBytesAsMegabytes(progress.CurrentFileSize).c_str()
+                FormatBytesAsFileSize(progress.CurrentFileBytesTransferred).c_str(),
+                FormatBytesAsFileSize(progress.CurrentFileSize).c_str()
             );
             double currentFileFraction = progress.CurrentFileSize > 0 ? static_cast<double>(progress.CurrentFileBytesTransferred) / static_cast<double>(progress.CurrentFileSize) : 0.0f;
             ImGui::ProgressBar(static_cast<float>(currentFileFraction));
@@ -489,8 +501,8 @@ void DeviceExplorer::RenderProgress()
 
             // Align the cancel button to the right.
             ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
-            float availWidth = ImGui::GetContentRegionAvail().x;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - buttonSize.x);
+            float availableWidth = ImGui::GetContentRegionAvail().x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - buttonSize.x);
             if (ImGui::Button("Cancel", buttonSize))
                 m_ActiveOperation->RequestCancel();
         }
@@ -530,15 +542,15 @@ void DeviceExplorer::RenderDeviceInfo()
         ImGui::NewLine();
 
         // The available space.
-        ImGui::Text("Total space: %s GB", FormatBytesAsGigabytes(m_TotalBytes).c_str());
-        ImGui::Text("Available space: %s GB", FormatBytesAsGigabytes(m_FreeBytes).c_str());
+        ImGui::Text("Total space: %s", FormatBytesAsFileSize(m_TotalBytes).c_str());
+        ImGui::Text("Available space: %s", FormatBytesAsFileSize(m_FreeBytes).c_str());
         double fraction = m_TotalBytes > 0 ? static_cast<double>(m_TotalBytes - m_FreeBytes) / static_cast<double>(m_TotalBytes) : 0;
         ImGui::ProgressBar(static_cast<float>(fraction));
 
         // Align the close button to the right.
         ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
-        float availWidth = ImGui::GetContentRegionAvail().x;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - buttonSize.x);
+        float availableWidth = ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - buttonSize.x);
         if (ImGui::Button("Close", buttonSize))
             ImGui::CloseCurrentPopup();
 
@@ -752,22 +764,53 @@ bool DeviceExplorer::IsDvdAvailable()
     return NT_SUCCESS(status);
 }
 
-std::string DeviceExplorer::FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces)
+std::string DeviceExplorer::FormatBytesAsFileSize(uint64_t bytes, size_t decimalPlaces)
 {
-    double megabytes = static_cast<double>(bytes) / (1024.0 * 1024.0);
+    // Constants for the units.
+    const double oneKilobyte = 1024.0;
+    const double oneMegabyte = 1024.0 * oneKilobyte;
+    const double oneGigabyte = 1024.0 * oneMegabyte;
 
+    const double bytesAsDouble = static_cast<double>(bytes);
+
+    // Find the most appropriate unit based on the amount of bytes.
+    double divider = 1.0;
+    std::string unit = "B";
+    if (bytesAsDouble > oneGigabyte)
+    {
+        divider = oneGigabyte;
+        unit = "GB";
+    }
+    else if (bytes > oneMegabyte)
+    {
+        divider = oneMegabyte;
+        unit = "MB";
+    }
+    else if (bytes > oneKilobyte)
+    {
+        divider = oneKilobyte;
+        unit = "KB";
+    }
+
+    // Create the final string.
     std::ostringstream stream;
-    stream << std::fixed << std::setprecision(decimalPlaces) << megabytes;
+    stream << std::fixed << std::setprecision(decimalPlaces) << (bytesAsDouble / divider);
+    stream << " " << unit;
 
     return stream.str();
 }
 
-std::string DeviceExplorer::FormatBytesAsGigabytes(uint64_t bytes, size_t decimalPlaces)
+std::string DeviceExplorer::TimeToString(time_t time)
 {
-    double gigabytes = static_cast<double>(bytes) / (1024.0 * 1024.0 * 1024.0);
+    // Parse the time into its different components.
+    tm t = {};
+    errno_t error = localtime_s(&t, &time);
+    if (error != 0)
+        throw Exception("[DeviceExplorer]: Couldn't convert time %lld to a string (%i).", time, error);
 
-    std::ostringstream stream;
-    stream << std::fixed << std::setprecision(decimalPlaces) << gigabytes;
+    // Stringify the time.
+    char buffer[32] = {};
+    strftime(buffer, sizeof(buffer), "%d/%m/%Y %H:%M", &t);
 
-    return stream.str();
+    return buffer;
 }

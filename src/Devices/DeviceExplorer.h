@@ -102,7 +102,7 @@ private:
 
     static bool IsDvdAvailable();
 
-    static std::string FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces = 2);
+    static std::string FormatBytesAsFileSize(uint64_t bytes, size_t decimalPlaces = 2);
 
-    static std::string FormatBytesAsGigabytes(uint64_t bytes, size_t decimalPlaces = 2);
+    static std::string TimeToString(time_t time);
 };
