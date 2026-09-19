@@ -13,11 +13,12 @@
 #include "../UI/NativeKeyboard.h"
 #include "../UI/Renderer.h"
 #include "../Utils/AsyncFileOperation.h"
+#include "DeviceWatcher.h"
 
 class DeviceExplorer : public Scene
 {
 public:
-    DeviceExplorer(const XexUtils::Fs::Path &baseDir, bool readOnly = false);
+    DeviceExplorer(const DeviceInfo &deviceInfo);
 
     ~DeviceExplorer();
 
@@ -26,6 +27,7 @@ public:
     void OnEvent(Event &event) override;
 
 private:
+    DeviceInfo m_DeviceInfo;
     XexUtils::Fs::Path m_CurrentDir;
     std::vector<XexUtils::Fs::File> m_Files;
     size_t m_SelectedFileIndex;
@@ -36,11 +38,13 @@ private:
     bool m_ShouldFocusFirstItem;
     bool m_ShouldOpenMenu;
     bool m_ShouldOpenOptions;
+    bool m_ShouldOpenDeviceInfo;
     NativeKeyboard m_RenameKeyboard;
     NativeKeyboard m_CreateDirKeyboard;
     std::unique_ptr<AsyncFileOperation> m_ActiveOperation;
-    bool m_ReadOnly;
     bool m_IsDvdAvailable;
+    uint64_t m_FreeBytes;
+    uint64_t m_TotalBytes;
 
     void RenderFileList();
 
@@ -51,6 +55,8 @@ private:
     void RenderActionBar();
 
     void RenderProgress();
+
+    void RenderDeviceInfo();
 
     bool OnButtonPressed(ButtonPressedEvent &event);
 
@@ -95,4 +101,6 @@ private:
     static bool IsDvdAvailable();
 
     static std::string FormatBytesAsMegabytes(uint64_t bytes, size_t decimalPlaces = 2);
+
+    static std::string FormatBytesAsGigabytes(uint64_t bytes, size_t decimalPlaces = 2);
 };

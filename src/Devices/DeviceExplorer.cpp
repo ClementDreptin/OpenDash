@@ -17,18 +17,22 @@
 #include "../Utils/AsyncFileOperation.h"
 #include "../Utils/ScopeGuard.h"
 #include "DeviceExplorer.h"
+#include "DeviceWatcher.h"
 
 DeviceExplorer::Clipboard DeviceExplorer::s_Clipboard;
 
-DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir, bool readOnly)
-    : m_SelectedFileIndex(0),
+DeviceExplorer::DeviceExplorer(const DeviceInfo &deviceInfo)
+    : m_DeviceInfo(deviceInfo),
+      m_SelectedFileIndex(0),
       m_DirectoryTexture("game:\\assets\\images\\directory.png"),
       m_FileTexture("game:\\assets\\images\\file.png"),
       m_XexTexture("game:\\assets\\images\\xex.png"),
       m_ShouldFocusFirstItem(false),
       m_ShouldOpenMenu(false),
       m_ShouldOpenOptions(false),
-      m_ReadOnly(readOnly)
+      m_ShouldOpenDeviceInfo(false),
+      m_FreeBytes(0),
+      m_TotalBytes(0)
 {
     // The DVD is a special device because, unlike the USB, we can't detect when a DVD
     // is inserted or removed because opening the disc tray while the app is running shuts
@@ -36,7 +40,18 @@ DeviceExplorer::DeviceExplorer(const XexUtils::Fs::Path &baseDir, bool readOnly)
     // app starts, so only checking for it's presence on init is fine.
     m_IsDvdAvailable = IsDvdAvailable();
 
-    ChangeDir(baseDir);
+    // Get the available space on the device.
+    XexUtils::Fs::Path rootPath = m_DeviceInfo.Name + '\\';
+    BOOL success = GetDiskFreeSpaceEx(
+        rootPath.c_str(),
+        nullptr,
+        reinterpret_cast<ULARGE_INTEGER *>(&m_TotalBytes),
+        reinterpret_cast<ULARGE_INTEGER *>(&m_FreeBytes)
+    );
+    if (!success)
+        throw Exception("[DeviceExplorer]: Couldn't get the free space of %s (%i).", rootPath.c_str(), GetLastError());
+
+    ChangeDir(rootPath);
 }
 
 DeviceExplorer::~DeviceExplorer()
@@ -56,6 +71,8 @@ void DeviceExplorer::Render()
     RenderActionBar();
 
     RenderProgress();
+
+    RenderDeviceInfo();
 }
 
 void DeviceExplorer::OnEvent(Event &event)
@@ -211,7 +228,7 @@ void DeviceExplorer::RenderOptions()
         }
 
         // Actions that are not available for read only devices.
-        if (!m_ReadOnly)
+        if (!m_DeviceInfo.ReadOnly)
         {
             if (ImGui::Button("Cut", buttonSize))
             {
@@ -392,8 +409,10 @@ void DeviceExplorer::RenderActionBar()
     if (hasSelection)
         hints.emplace_back(std::make_pair(CHAR_BUTTON_Y, "Options"));
 
-    if (!m_ReadOnly)
-        hints.emplace_back(std::make_pair(CHAR_BUTTON_BACK, "Menu"));
+    if (!m_DeviceInfo.ReadOnly)
+        hints.emplace_back(std::make_pair(CHAR_BUTTON_X, "Menu"));
+
+    hints.emplace_back(std::make_pair(CHAR_BUTTON_BACK, "Info"));
 
     if (hints.empty())
         return;
@@ -483,6 +502,42 @@ void DeviceExplorer::RenderProgress()
     }
 }
 
+void DeviceExplorer::RenderDeviceInfo()
+{
+    // Open the device info popup if requested.
+    if (m_ShouldOpenDeviceInfo)
+    {
+        ImGui::OpenPopup("Device info");
+        m_ShouldOpenDeviceInfo = false;
+    }
+
+    // Render the modal.
+    ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvail().x * 0.4f, 0.0f));
+    if (ImGui::BeginPopupModal("Device info", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        // General info.
+        ImGui::Text("Name: %s", m_DeviceInfo.Name.c_str());
+        ImGui::Text("Path: %s", m_DeviceInfo.Path.c_str());
+        ImGui::Text("Read only: %s", m_DeviceInfo.ReadOnly ? "Yes" : "No");
+        ImGui::NewLine();
+
+        // The available space.
+        ImGui::Text("Total space: %s GB", FormatBytesAsGigabytes(m_TotalBytes).c_str());
+        ImGui::Text("Available space: %s GB", FormatBytesAsGigabytes(m_FreeBytes).c_str());
+        double fraction = m_TotalBytes > 0 ? static_cast<double>(m_TotalBytes - m_FreeBytes) / static_cast<double>(m_TotalBytes) : 0;
+        ImGui::ProgressBar(static_cast<float>(fraction));
+
+        // Align the close button to the right.
+        ImVec2 buttonSize(ImGui::GetFontSize() * 4.0f, 0.0f);
+        float availWidth = ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - buttonSize.x);
+        if (ImGui::Button("Close", buttonSize))
+            ImGui::CloseCurrentPopup();
+
+        ImGui::EndPopup();
+    }
+}
+
 bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
 {
     const XexUtils::Input::Gamepad &gamepad = event.GetGamepad();
@@ -509,10 +564,17 @@ bool DeviceExplorer::OnButtonPressed(ButtonPressedEvent &event)
         return true;
     }
 
-    // Open the menu when pressing back (the menu is not available for read only devices).
-    if (gamepad.PressedButtons & XINPUT_GAMEPAD_BACK && !m_ReadOnly)
+    // Open the menu when pressing X (the menu is not available for read only devices).
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_X && !m_DeviceInfo.ReadOnly)
     {
         m_ShouldOpenMenu = true;
+        return true;
+    }
+
+    // Open the device info modal when pressing back.
+    if (gamepad.PressedButtons & XINPUT_GAMEPAD_BACK)
+    {
+        m_ShouldOpenDeviceInfo = true;
         return true;
     }
 
@@ -688,6 +750,16 @@ std::string DeviceExplorer::FormatBytesAsMegabytes(uint64_t bytes, size_t decima
 
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(decimalPlaces) << megabytes;
+
+    return stream.str();
+}
+
+std::string DeviceExplorer::FormatBytesAsGigabytes(uint64_t bytes, size_t decimalPlaces)
+{
+    double gigabytes = static_cast<double>(bytes) / (1024.0 * 1024.0 * 1024.0);
+
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(decimalPlaces) << gigabytes;
 
     return stream.str();
 }

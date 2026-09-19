@@ -39,13 +39,9 @@ App::App()
     {
         const auto &device = devices[i];
         if (device.Available)
-        {
-            std::string deviceName = device.Name;
-            bool readOnly = device.ReadOnly;
-            m_SceneFactories.emplace_back(SceneFactoryEntry(deviceName, [deviceName, readOnly]() -> Scene * {
-                return new DeviceExplorer(deviceName + "\\", readOnly);
+            m_SceneFactories.emplace_back(SceneFactoryEntry(device.Name, [=]() -> Scene * {
+                return new DeviceExplorer(device);
             }));
-        }
     }
 
     // Add the SystemInfo scene.
@@ -142,8 +138,7 @@ bool App::OnDeviceChanged(DeviceChangedEvent &event)
     // If a device was inserted, append a DeviceExplorer for it to the list of scenes.
     if (deviceInfo.Available)
     {
-        std::string deviceName = deviceInfo.Name;
-        m_SceneFactories.emplace_back(SceneFactoryEntry(deviceName, [deviceName]() -> Scene * { return new DeviceExplorer(deviceName + "\\"); }));
+        m_SceneFactories.emplace_back(SceneFactoryEntry(deviceInfo.Name, [=]() -> Scene * { return new DeviceExplorer(deviceInfo); }));
     }
     // If a device was removed, remove its corresponding DeviceExplorer.
     else
