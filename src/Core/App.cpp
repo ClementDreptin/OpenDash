@@ -30,7 +30,7 @@ App::App()
         uint32_t gamesDirAttributes = GetFileAttributes("hdd:\\Games");
         bool hasGamesDir = gamesDirAttributes != 0xFFFFFFFF && (gamesDirAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
         if (hasGamesDir)
-            m_SceneFactories.emplace_back(SceneFactoryEntry("Games", []() -> Scene * { return new GamesExplorer(); }));
+            AddScene(SceneFactoryEntry("Games", SceneGroup_Games, []() -> Scene * { return new GamesExplorer(); }));
     }
 
     // Go through all the available devices and add a DeviceExplorer for each.
@@ -39,13 +39,13 @@ App::App()
     {
         const auto &device = devices[i];
         if (device.Available)
-            m_SceneFactories.emplace_back(SceneFactoryEntry(device.Name, [=]() -> Scene * {
+            AddScene(SceneFactoryEntry(device.Name, SceneGroup_Devices, [=]() -> Scene * {
                 return new DeviceExplorer(device);
             }));
     }
 
     // Add the SystemInfo scene.
-    m_SceneFactories.emplace_back(SceneFactoryEntry("System Info", []() -> Scene * { return new SystemInfo(); }));
+    AddScene(SceneFactoryEntry("System Info", SceneGroup_System, []() -> Scene * { return new SystemInfo(); }));
 }
 
 void App::Run()
@@ -138,7 +138,7 @@ bool App::OnDeviceChanged(DeviceChangedEvent &event)
     // If a device was inserted, append a DeviceExplorer for it to the list of scenes.
     if (deviceInfo.Available)
     {
-        m_SceneFactories.emplace_back(SceneFactoryEntry(deviceInfo.Name, [=]() -> Scene * { return new DeviceExplorer(deviceInfo); }));
+        AddScene(SceneFactoryEntry(deviceInfo.Name, SceneGroup_Devices, [=]() -> Scene * { return new DeviceExplorer(deviceInfo); }));
     }
     // If a device was removed, remove its corresponding DeviceExplorer.
     else
@@ -161,6 +161,22 @@ bool App::OnDeviceChanged(DeviceChangedEvent &event)
     }
 
     return false;
+}
+
+void App::AddScene(const SceneFactoryEntry &entry)
+{
+    // The list is always sorted by group, so insert after the last entry whose
+    // group is less than or equal to the new one. This keeps the groups together
+    // and preserves insertion order within a group.
+    auto position = std::upper_bound(
+        m_SceneFactories.begin(),
+        m_SceneFactories.end(), entry,
+        [](const SceneFactoryEntry &a, const SceneFactoryEntry &b) {
+            return a.Group < b.Group;
+        }
+    );
+
+    m_SceneFactories.insert(position, entry);
 }
 
 void App::SwitchScene(const SceneFactoryEntry &entry)

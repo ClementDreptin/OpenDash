@@ -18,12 +18,20 @@ public:
     void Run();
 
 private:
+    typedef enum _SceneGroup
+    {
+        SceneGroup_Games,
+        SceneGroup_Devices,
+        SceneGroup_System,
+    } SceneGroup;
+
     struct SceneFactoryEntry
     {
-        SceneFactoryEntry(const std::string &deviceName, const std::function<Scene *()> &factory)
-            : SceneName(deviceName), Factory(factory) {}
+        SceneFactoryEntry(const std::string &deviceName, SceneGroup group, const std::function<Scene *()> &factory)
+            : SceneName(deviceName), Group(group), Factory(factory) {}
 
         std::string SceneName;
+        SceneGroup Group;
         std::function<Scene *()> Factory;
     };
 
@@ -43,6 +51,8 @@ private:
     void OnEvent(Event &event);
 
     bool OnDeviceChanged(DeviceChangedEvent &event);
+
+    void AddScene(const SceneFactoryEntry &entry);
 
     void SwitchScene(const SceneFactoryEntry &entry);
 };
