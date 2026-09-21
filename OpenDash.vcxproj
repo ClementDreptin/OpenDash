@@ -68,7 +68,7 @@
     </Link>
     <Deploy>
       <DeploymentType>CopyToHardDrive</DeploymentType>
-      <DeploymentFiles>$(RemoteRoot)=$(ImagePath);$(RemoteRoot)\assets=$(OutDir)assets</DeploymentFiles>
+      <DeploymentFiles>$(RemoteRoot)=$(ImagePath);$(RemoteRoot)\assets=$(OutDir)assets;$(RemoteRoot)=$(OutDir)nxeart</DeploymentFiles>
     </Deploy>
     <ImageXex>
       <ConfigurationFile>$(SolutionDir)xex.xml</ConfigurationFile>
