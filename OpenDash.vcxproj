@@ -83,6 +83,7 @@
     <ClInclude Include="src\Devices\DeviceWatcher.h" />
     <ClInclude Include="src\Devices\GamesExplorer.h" />
     <ClInclude Include="src\Input\InputWatcher.h" />
+    <ClInclude Include="src\System\PluginManager.h" />
     <ClInclude Include="src\System\SystemInfo.h" />
     <ClInclude Include="src\UI\NativeKeyboard.h" />
     <ClInclude Include="src\UI\Renderer.h" />
@@ -97,6 +98,7 @@
     <ClCompile Include="src\Devices\DeviceWatcher.cpp" />
     <ClCompile Include="src\Devices\GamesExplorer.cpp" />
     <ClCompile Include="src\Input\InputWatcher.cpp" />
+    <ClCompile Include="src\System\PluginManager.cpp" />
     <ClCompile Include="src\System\SystemInfo.cpp" />
     <ClCompile Include="src\UI\NativeKeyboard.cpp" />
     <ClCompile Include="src\UI\Renderer.cpp" />

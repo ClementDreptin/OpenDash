@@ -10,6 +10,7 @@
 #include "../Devices/DeviceWatcher.h"
 #include "../Devices/GamesExplorer.h"
 #include "../Input/InputWatcher.h"
+#include "../System/PluginManager.h"
 #include "../System/SystemInfo.h"
 #include "../UI/Renderer.h"
 #include "App.h"
@@ -23,7 +24,7 @@ App::App()
     m_DeviceWatcher.SetEventCallback(propagateEvent);
     m_InputWatcher.SetEventCallback(propagateEvent);
 
-    // Add the GamesExplorer if hdd:\Games directory is present.
+    // Add the GamesExplorer if the hdd:\Games directory is present.
     bool hasHdd = (XboxHardwareInfo->Flags & XBOX_HARDWARE_FLAG_HDD) != 0;
     if (hasHdd)
     {
@@ -44,7 +45,16 @@ App::App()
             }));
     }
 
-    // Add the SystemInfo scene.
+    // Add the PluginManager if the hdd:\Plugins directory is present.
+    if (hasHdd)
+    {
+        uint32_t pluginsDirAttributes = GetFileAttributes("hdd:\\Plugins");
+        bool hasPluginsDir = pluginsDirAttributes != 0xFFFFFFFF && (pluginsDirAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+        if (hasPluginsDir)
+            AddScene(SceneFactoryEntry("Plugins", SceneGroup_System, []() -> Scene * { return new PluginManager(); }));
+    }
+
+    // Add the SystemInfo.
     AddScene(SceneFactoryEntry("System Info", SceneGroup_System, []() -> Scene * { return new SystemInfo(); }));
 }
 
