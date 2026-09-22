@@ -17,9 +17,9 @@ OpenDash is a custom dashboard for the Xbox 360 that aims to be simple and intui
 
 The latest build is available in the [releases](https://github.com/ClementDreptin/OpenDash/releases). Each release is available in 2 formats:
 
-- OpenDash.zip
+- OpenDash.zip<br>
   A regular directory with all the files to run the app. Move the content of the zip somewhere on the console and run OpenDash.xex.
-- OpenDash-demo.zip
+- OpenDash-demo.zip<br>
   A game demo (same format as the "live" version of XeXMenu) with the full file tree from the root of a storage device. Move the `Content` directory to a storage device (hard drive or USB). You probably already have a `Content` directory on your device, it will not overridden, its content will be merged with the `Content` directory from the zip.
   You should now see OpenDash in the Games section of the official dashboard.
 
